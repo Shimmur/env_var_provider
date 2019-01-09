@@ -1,6 +1,12 @@
 EnvVarProvider
 ==============
 
+Allows _dynamic_ runtime configuration of Elixir releases from
+system environment variables. Great for running Elixir applications
+on modern infrastructure like Docker, Kubernetes, Mesos.
+
+This requires Distillery 2.0.
+
 Installation
 ------------
 
@@ -13,7 +19,6 @@ def deps do
   ]
 end
 ```
-
 
 Configuration
 -------------
