@@ -1,9 +1,10 @@
 EnvVarProvider
 ==============
 
-Allows _dynamic_ runtime configuration of Elixir releases from
-system environment variables. Great for running Elixir applications
-on modern infrastructure like Docker, Kubernetes, Mesos.
+Allows _dynamic_ runtime configuration of Elixir releases from system
+environment variables, including _type_ _conversion_ to non-string types. Great
+for running Elixir applications on modern infrastructure like Docker,
+Kubernetes, Mesos.
 
 This requires Distillery 2.0.
 
