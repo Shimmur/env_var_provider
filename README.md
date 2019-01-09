@@ -28,7 +28,7 @@ You need to add this to your `rel/config.exs` like so:
 
 ```elixir
 release :my_release do
-  set version: current_version(:hermes)
+  set version: current_version(:my_app)
   set applications: [
     :runtime_tools
   ]
