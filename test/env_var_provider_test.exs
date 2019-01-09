@@ -1,25 +1,27 @@
-defmodule Providers.EnvVarProvider do
+defmodule EnvVar.ProviderTest do
   use ExUnit.Case
 
+  doctest EnvVar.Provider
+
   setup do
-    Application.put_env(:mycluster, :cluster_options, [
-        ssl: [
-          verify_flags: 0
-        ],
-        credentials: {"user", "password"},
-        contact_points: "127.0.0.1",
-        port: 9042,
-        latency_aware_routing: true,
-        token_aware_routing: true,
-        number_threads_io: 4,
-        queue_size_io: 128_000,
-        max_connections_host: 5,
-        tcp_nodelay: true,
-        tcp_keepalive: {true, 1800},
-        default_consistency_level: 6 # LOCAL_QUORUM
-      ]
+    Application.put_env(:mycluster, :cluster_options,
+      ssl: [
+        verify_flags: 0
+      ],
+      credentials: {"user", "password"},
+      contact_points: "127.0.0.1",
+      port: 9042,
+      latency_aware_routing: true,
+      token_aware_routing: true,
+      number_threads_io: 4,
+      queue_size_io: 128_000,
+      max_connections_host: 5,
+      tcp_nodelay: true,
+      tcp_keepalive: {true, 1800},
+      # LOCAL_QUORUM
+      default_consistency_level: 6
     )
-    
+
     complex_config = %{
       mycluster: %{
         cluster_options: %{
@@ -32,6 +34,9 @@ defmodule Providers.EnvVarProvider do
     }
 
     simple_config = %{
+      the_system: %{
+        service_name: %{type: :string, default: "envoygw"}
+      },
       mycluster: %{
         server_count: %{type: :integer, default: "123"},
         name: %{type: :string, default: "grendel"},
@@ -40,7 +45,7 @@ defmodule Providers.EnvVarProvider do
       }
     }
 
-    on_exit(fn -> 
+    on_exit(fn ->
       System.put_env("BEOWULF_MYCLUSTER_CREDENTIALS", "")
       System.put_env("BEOWULF_MYCLUSTER_PORT", "")
       System.put_env("BEOWULF_MYCLUSTER_LIST_KEY", "")
@@ -50,7 +55,7 @@ defmodule Providers.EnvVarProvider do
       System.put_env("BEOWULF_MYCLUSTER_KEYS", "")
       :ok
     end)
-    
+
     {:ok, complex: complex_config, simple: simple_config}
   end
 
@@ -62,7 +67,7 @@ defmodule Providers.EnvVarProvider do
       assert Keyword.get(conf, :port) == 9042
       assert Keyword.get(conf, :credentials) == {"user", "pass"}
       assert Keyword.get(conf, :contact_points) == "127.0.0.1"
-      assert Keyword.get(conf, :list_key) == [1,2,3]
+      assert Keyword.get(conf, :list_key) == [1, 2, 3]
     end
 
     test "it pulls in the right env var values", state do
@@ -83,7 +88,7 @@ defmodule Providers.EnvVarProvider do
     test "it correctly defaults values for numbers, strings, lists, tuples", state do
       EnvVar.Provider.init(prefix: "beowulf", env_map: state[:simple])
 
-      assert Application.get_env(:mycluster, :server_count) == 123 
+      assert Application.get_env(:mycluster, :server_count) == 123
       assert Application.get_env(:mycluster, :name) == "grendel"
       assert Application.get_env(:mycluster, :settings) == ["swarthy", "hairy"]
       assert Application.get_env(:mycluster, :keys) == {1.1, 2.3, 3.4}
@@ -97,10 +102,16 @@ defmodule Providers.EnvVarProvider do
 
       EnvVar.Provider.init(prefix: "beowulf", env_map: state[:simple])
 
-      assert Application.get_env(:mycluster, :server_count) == 67 
+      assert Application.get_env(:mycluster, :server_count) == 67
       assert Application.get_env(:mycluster, :name) == "hrothgar"
       assert Application.get_env(:mycluster, :settings) == ["good", "tall"]
       assert Application.get_env(:mycluster, :keys) == {3.2, 5.6, 7.8}
+    end
+
+    test "creates new values with defaults that didn't already exist", state do
+      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:simple])
+
+      assert "envoygw" == Application.get_env(:the_system, :service_name)
     end
   end
 end

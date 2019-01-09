@@ -48,9 +48,43 @@ release :my_release do
 end
 ```
 
-You may need to call the provider multiple times for different applications
-and you can just specify it repeatedly. The `prefix` will prefix all env
-vars. So "prefix" will before "PREFIX_", etc.
+**You may need to call the provider multiple times for different applications
+and you can just specify it repeatedly.**
 
-Defaults must all be specified as strings and will have the same type
-conversion applied that the env var would.
+`prefix` is a string that will me capitalized and prepended to all
+environment variables we look at. e.g. `prefix: "beowulf"` translates
+into environment variables starting with `BEOWULF_`. This is used
+to namespace our variables to prevent conflicts.
+
+`env_map` follows the following format:
+```
+  env_map = %{
+    heorot: %{
+      location: %{type: :string, default: "land of the Geats"},
+    },
+    mycluster: %{
+      server_count: %{type: :integer, default: "123"},
+      name: %{type: :string, default: "grendel"},
+      settings: %{type: {:list, :string}, default: "swarthy,hairy"},
+      keys: %{type: {:tuple, :float}, default: "1.1,2.3,3.4"}
+    }
+  }
+```
+
+Type conversion uses the defined types to handle the destination
+conversion.
+
+Supported types:
+ * `:string`
+ * `:integer`
+ * `:float`
+ * `{:tuple, <type>}` - Complex type, where the second field is
+   one of the simple types above. Currently items in the tuple
+   must all be of the same type. A 3rd argument can be passed
+   to specify the field separator in the env var. Defaults to
+   comma.
+ * `{:list, <type>}` - Complex type, following the same rules as
+   Tuples above. 
+
+Default values will overwrite any existing values in the config
+for this environment.
