@@ -42,6 +42,9 @@ release :my_release do
         contact_points: %{type: :string, default: "127.0.0.1"},
         port: %{type: :integer, default: "9042"}
       }
+    },
+    simpler: %{
+      service_name: %{type: :string, default: "my_service"}
     }
   }
 
@@ -54,10 +57,15 @@ release :my_release do
 end
 ```
 
-The above config would source env vars and behave like this:
- * `MY_RELEASE_ERLCASS_CREDENTIALS` -> `Application.put_env(:erlcass, :credentials, {"user", "pass"})`
- * `MY_RELEASE_ERLCASS_CONTACT_POINTS` -> `Application.put_env(:erlcass, :contact_points, "127.0.0.1")`
- * `MY_RELEASE_ERLCASS_PORT` -> `Application.put_env(:erlcass, :port, 9042)`
+The above config would source env vars like this:
+ * `MY_RELEASE_ERLCASS_CREDENTIALS`
+ * `MY_RELEASE_ERLCASS_CONTACT_POINTS`
+ * `MY_RELEASE_ERLCASS_PORT`
+ * `MY_RELEASE_SIMPLER_SERVICE_NAME`
+
+Note that the `*_ERLCASS_*` keys are assumed to be values in a Keyword list
+in this format. Simpler configuration doesn't require the extra layer and
+can be one layer flatter like in `:simpler` above.
 
 **You may need to call the provider multiple times for different applications
 and you can just specify it repeatedly.**
