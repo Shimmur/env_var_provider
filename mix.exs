@@ -21,7 +21,7 @@ defmodule EnvVarProvider.MixProject do
 
   defp deps do
     [
-      {:distillery, "~> 2.0"},
+      {:distillery, "~> 2.0"}
     ]
   end
 
@@ -31,7 +31,7 @@ defmodule EnvVarProvider.MixProject do
     configuration source, with configurable type conversion built in.
     """
   end
-  
+
   defp package do
     [
       files: ["lib", "mix.exs", "README*", "LICENSE*"],

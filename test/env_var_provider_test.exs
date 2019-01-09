@@ -45,6 +45,12 @@ defmodule EnvVar.ProviderTest do
       }
     }
 
+    elixir_module_config = %{
+      app: %{
+        :"Elixir.EnvVar.Provider" => %{type: :string, default: "result"}
+      }
+    }
+
     on_exit(fn ->
       System.put_env("BEOWULF_MYCLUSTER_CREDENTIALS", "")
       System.put_env("BEOWULF_MYCLUSTER_PORT", "")
@@ -56,7 +62,7 @@ defmodule EnvVar.ProviderTest do
       :ok
     end)
 
-    {:ok, complex: complex_config, simple: simple_config}
+    {:ok, complex: complex_config, simple: simple_config, elixir_mod: elixir_module_config}
   end
 
   describe "when the value is a Keyword list" do
@@ -112,6 +118,16 @@ defmodule EnvVar.ProviderTest do
       EnvVar.Provider.init(prefix: "beowulf", env_map: state[:simple])
 
       assert "envoygw" == Application.get_env(:the_system, :service_name)
+    end
+  end
+
+  describe "when dealing with Elixir module atom keys" do
+    test "handles Elixir modules as keys cleanly", state do
+      System.put_env("BEOWULF_APP_ENVVAR_PROVIDER", "different")
+
+      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:elixir_mod])
+
+      assert Application.get_env(:app, EnvVar.Provider) == "different"
     end
   end
 end

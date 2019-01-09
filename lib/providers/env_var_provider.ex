@@ -78,6 +78,7 @@ defmodule EnvVar.Provider do
 
   defp save_result(app, key, result) do
     existing = Application.get_env(app, key)
+
     if is_list(existing) and Keyword.keyword?(existing) do
       {k, v} = result
 
@@ -154,7 +155,12 @@ defmodule EnvVar.Provider do
 
   defp lookup_key_for(key, prefix, app) do
     [String.to_atom(prefix), app, key]
-    |> Enum.map(&Atom.to_string/1)
+    |> Enum.map(fn x ->
+      x
+      |> Atom.to_string()
+      |> String.replace("Elixir.", "")
+      |> String.replace(".", "_")
+    end)
     |> Enum.map(&String.upcase/1)
     |> Enum.join("_")
   end
