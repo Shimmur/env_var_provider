@@ -54,6 +54,11 @@ release :my_release do
 end
 ```
 
+The above config would source env vars and behave like this:
+ * `MY_RELEASE_ERLCASS_CREDENTIALS` -> `Application.put_env(:erlcass, :credentials, {"user", "pass"}`
+ * `MY_RELEASE_ERLCASS_CONTACT_POINTS` -> `Application.put_env(:erlcass, :contact_points, "127.0.0.1")`
+ * `MY_RELEASE_ERLCASS_PORT` -> `Application.put_env(:erlcass, :port, 9042)`
+
 **You may need to call the provider multiple times for different applications
 and you can just specify it repeatedly.**
 
