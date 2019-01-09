@@ -51,94 +51,86 @@ defmodule EnvVar.Provider do
   for this environment.
   """
   def init(prefix: prefix, env_map: env_map) do
+    prefix = if is_atom(prefix) do
+      prefix
+    else
+      String.to_atom(prefix)
+    end
     process_config(env_map, prefix)
   end
 
-  # process_config will save the environment variables to the Application
-  # config, according to the provided configuration map.
   defp process_config(env_map, prefix) do
-    env_map
-    |> Enum.each(fn {app, top_config} ->
-      top_config |> Enum.each(&process_lower_config(&1, prefix, app))
-    end)
-  end
+    for {app, app_config} <- env_map do
+      for {key, key_config} <- app_config do
+        case key_config do
+          %{type: _} ->
+            get_env_value([prefix, app, key], key_config)
+            |> set_value(app, key)
 
-  defp process_lower_config({key, config}, prefix, app) do
-    if Map.has_key?(config, :type) do
-      {key, result} = process_bottom_config({key, config}, prefix, app)
-      save_result(app, key, result)
-    else
-      config
-      |> Enum.map(&process_bottom_config(&1, prefix, app))
-      |> Enum.each(fn result ->
-        save_result(app, key, result)
-      end)
+          _ ->
+            process_list_entry(prefix, app, key, key_config)
+        end
+      end
     end
   end
 
-  defp save_result(app, key, result) do
-    existing = Application.get_env(app, key)
-
-    if is_list(existing) and Keyword.keyword?(existing) do
-      {k, v} = result
-
-      new_value =
-        existing
-        |> Keyword.put(k, v)
-
-      Application.put_env(app, key, new_value)
-    else
-      Application.put_env(app, key, result)
+  defp process_list_entry(prefix, app, key, key_config) do
+    for {list_key, config} <- key_config do
+      get_env_value([prefix, app, key, list_key], config)
+      |> set_list_value(app, key, list_key)
     end
   end
 
-  defp process_bottom_config({env_key, config}, prefix, app) do
-    env_value =
-      lookup_key_for(env_key, prefix, app)
-      |> System.get_env()
-      |> set_default(Map.get(config, :default, ""))
-
-    result = convert(config[:type], env_value)
-    {env_key, result}
+  defp get_env_value(fields, config) do
+    lookup_key_for(fields)
+    |> System.get_env
+    |> set_default(config[:default])
+    |> convert(config[:type])
   end
 
-  defp convert(:float, env_value) do
+  defp set_value(value, app, key) do
+    Application.put_env(app, key, value)
+  end
+
+  defp set_list_value(value, app, key, list_key) do
+    keylist = Application.get_env(app, key)
+    newlist = Keyword.put(keylist, list_key, value)
+    Application.put_env(app, key, newlist)
+  end
+
+  defp convert(env_value, :float) do
     {val, _extra} = Float.parse(env_value)
     val
   end
 
-  defp convert(:integer, env_value) do
+  defp convert(env_value, :integer) do
     {val, _extra} = Integer.parse(env_value)
     val
   end
 
-  defp convert(:string, env_value) do
+  defp convert(env_value, :string) do
     env_value
   end
 
-  defp convert({:tuple, type}, env_value) do
-    convert({:tuple, type, ","}, env_value)
+  defp convert(env_value, {:tuple, type}) do
+    convert(env_value, {:tuple, type, ","})
   end
 
-  defp convert({:tuple, type, separator}, env_value) do
+  defp convert(env_value, {:tuple, type, separator}) do
     env_value
     |> String.split(separator)
-    |> Enum.map(fn val ->
-      convert(type, val)
-    end)
+    |> Enum.map(&convert(&1, type))
     |> List.to_tuple()
   end
 
-  defp convert({:list, type}, env_value) do
-    convert({:list, type, ","}, env_value)
+  defp convert(env_value, {:list, type}) do
+    convert(env_value, {:list, type, ","})
   end
 
-  defp convert({:list, type, separator}, env_value) do
+  defp convert(env_value, {:list, type, separator}) do
     env_value
     |> String.split(separator)
-    |> Enum.map(fn val ->
-      convert(type, val)
-    end)
+    |> Enum.map(&convert(&1, type))
   end
 
   defp set_default(value, default) when is_nil(value) do
@@ -153,9 +145,10 @@ defmodule EnvVar.Provider do
     end
   end
 
-  defp lookup_key_for(key, prefix, app) do
-    [String.to_atom(prefix), app, key]
+  defp lookup_key_for(fields) do
+    fields
     |> Enum.map(fn x ->
+      # Handle module Atoms as keys
       x
       |> Atom.to_string()
       |> String.replace("Elixir.", "")

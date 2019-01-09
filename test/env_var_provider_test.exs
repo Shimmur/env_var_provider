@@ -52,9 +52,9 @@ defmodule EnvVar.ProviderTest do
     }
 
     on_exit(fn ->
-      System.put_env("BEOWULF_MYCLUSTER_CREDENTIALS", "")
-      System.put_env("BEOWULF_MYCLUSTER_PORT", "")
-      System.put_env("BEOWULF_MYCLUSTER_LIST_KEY", "")
+      System.put_env("BEOWULF_MYCLUSTER_CLUSTER_OPTIONS_CREDENTIALS", "")
+      System.put_env("BEOWULF_MYCLUSTER_CLUSTER_OPTIONS_PORT", "")
+      System.put_env("BEOWULF_MYCLUSTER_CLUSTER_OPTIONS_LIST_KEY", "")
       System.put_env("BEOWULF_MYCLUSTER_SERVER_COUNT", "")
       System.put_env("BEOWULF_MYCLUSTER_NAME", "")
       System.put_env("BEOWULF_MYCLUSTER_SETTINGS", "")
@@ -77,9 +77,9 @@ defmodule EnvVar.ProviderTest do
     end
 
     test "it pulls in the right env var values", state do
-      System.put_env("BEOWULF_MYCLUSTER_CREDENTIALS", "myuser,mypass")
-      System.put_env("BEOWULF_MYCLUSTER_PORT", "11121")
-      System.put_env("BEOWULF_MYCLUSTER_LIST_KEY", "6,7,8")
+      System.put_env("BEOWULF_MYCLUSTER_CLUSTER_OPTIONS_CREDENTIALS", "myuser,mypass")
+      System.put_env("BEOWULF_MYCLUSTER_CLUSTER_OPTIONS_PORT", "11121")
+      System.put_env("BEOWULF_MYCLUSTER_CLUSTER_OPTIONS_LIST_KEY", "6,7,8")
 
       EnvVar.Provider.init(prefix: "beowulf", env_map: state[:complex])
       conf = Application.get_env(:mycluster, :cluster_options, :port)
@@ -115,7 +115,6 @@ defmodule EnvVar.ProviderTest do
 
       EnvVar.Provider.init(prefix: "beowulf", env_map: state[:simple])
 
-      assert Application.get_env(:mycluster, :server_count) == 67
       assert Application.get_env(:mycluster, :name) == "hrothgar"
       assert Application.get_env(:mycluster, :settings) == ["good", "tall"]
       assert Application.get_env(:mycluster, :keys) == {3.2, 5.6, 7.8}
