@@ -91,6 +91,13 @@ defmodule EnvVar.ProviderTest do
   end
 
   describe "when dealing with simple values" do
+    test "it handles empty prefix", state do
+      System.put_env("MYCLUSTER_SERVER_COUNT", "67")
+      EnvVar.Provider.init(prefix: "", env_map: state[:simple])
+
+      assert Application.get_env(:mycluster, :server_count) == 67
+    end
+
     test "it correctly defaults values for numbers, strings, lists, tuples", state do
       EnvVar.Provider.init(prefix: "beowulf", env_map: state[:simple])
 
@@ -122,7 +129,7 @@ defmodule EnvVar.ProviderTest do
   end
 
   describe "when dealing with Elixir module atom keys" do
-    test "handles Elixir modules as keys cleanly", state do
+    test "it handles Elixir modules as keys cleanly", state do
       System.put_env("BEOWULF_APP_ENVVAR_PROVIDER", "different")
 
       EnvVar.Provider.init(prefix: "beowulf", env_map: state[:elixir_mod])

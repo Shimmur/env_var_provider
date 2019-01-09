@@ -163,5 +163,6 @@ defmodule EnvVar.Provider do
     end)
     |> Enum.map(&String.upcase/1)
     |> Enum.join("_")
+    |> (fn x -> Regex.replace(~r/^_/, x, "") end).()
   end
 end
