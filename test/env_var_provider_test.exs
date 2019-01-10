@@ -59,6 +59,7 @@ defmodule EnvVar.ProviderTest do
       System.put_env("BEOWULF_MYCLUSTER_NAME", "")
       System.put_env("BEOWULF_MYCLUSTER_SETTINGS", "")
       System.put_env("BEOWULF_MYCLUSTER_KEYS", "")
+      System.put_env("BEOWULF_APP_ENVVAR_PROVIDER", "")
       :ok
     end)
 
@@ -134,6 +135,18 @@ defmodule EnvVar.ProviderTest do
       EnvVar.Provider.init(prefix: "beowulf", env_map: state[:elixir_mod])
 
       assert Application.get_env(:app, EnvVar.Provider) == "different"
+    end
+  end
+
+  describe "when there is no default value" do
+    test "it defaults to what is in the config already", state do
+      Application.put_env(:app, EnvVar.Provider, "original")
+      map = state[:elixir_mod]
+      map = update_in(map, [:app, EnvVar.Provider], &Map.delete(&1, :default))
+
+      EnvVar.Provider.init(prefix: "beowulf", env_map: map)
+
+      assert Application.get_env(:app, EnvVar.Provider) == "original"
     end
   end
 end

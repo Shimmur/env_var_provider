@@ -28,6 +28,7 @@ defmodule EnvVar.Provider do
         name: %{type: :string, default: "grendel"},
         settings: %{type: {:list, :string}, default: "swarthy,hairy"},
         keys: %{type: {:tuple, :float}, default: "1.1,2.3,3.4"}
+        no_default: %{type: :string}
       }
     }
   ```
@@ -88,8 +89,14 @@ defmodule EnvVar.Provider do
     |> convert(config[:type])
   end
 
+  defp set_value(value, _app, _key) when is_nil(value) do
+  end
+
   defp set_value(value, app, key) do
     Application.put_env(app, key, value)
+  end
+
+  defp set_list_value(value, _app, _key, _list_key) when is_nil(value) do
   end
 
   defp set_list_value(value, app, key, list_key) do

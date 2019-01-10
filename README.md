@@ -44,7 +44,7 @@ release :my_release do
       }
     },
     simpler: %{
-      service_name: %{type: :string, default: "my_service"}
+      service_name: %{type: :string}
     }
   }
 
@@ -82,13 +82,20 @@ to namespace our variables to prevent conflicts.
       location: %{type: :string, default: "land of the Geats"},
     },
     mycluster: %{
-      server_count: %{type: :integer, default: "123"},
+      server_count: %{type: :integer},
       name: %{type: :string, default: "grendel"},
       settings: %{type: {:list, :string}, default: "swarthy,hairy"},
       keys: %{type: {:tuple, :float}, default: "1.1,2.3,3.4"}
     }
   }
 ```
+
+Type Conversion
+---------------
+
+Type conversion allows you to source settings from the environment that
+are not strings. It even supports a limited set of complex types like
+`List`s and `Tuple`s.
 
 Type conversion uses the defined types to handle the destination
 conversion.
@@ -105,5 +112,15 @@ Supported types:
  * `{:list, <type>}` - Complex type, following the same rules as
    Tuples above. 
 
-Default values will overwrite any existing values in the config
-for this environment.
+Default Values
+--------------
+You have two choices when dealing with default values:
+
+ 1. Leave them off and it will default to what is in the Application
+    config already.
+ 2. Set them in the release configuration. This can provide better
+    visibility in one place as to what the fallback will be if the
+	variable is not provided.
+
+If you supply default values, they will overwrite any existing values in the
+config for this environment.
