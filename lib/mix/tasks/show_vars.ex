@@ -10,12 +10,19 @@ defmodule Mix.Tasks.ShowVars do
   use Mix.Task
 
   def run(args) when length(args) < 1 do
-    IO.puts "Error: You must specify a prefix, or '' if you want none"
+    IO.puts("Error: You must specify a prefix, or '' if you want none")
   end
 
   def run(args) do
-    [prefix] = args
-    config = EnvVar.Config.config
-    EnvVar.Provider.show_vars(prefix: prefix, env_map: config)
+    if Code.ensure_compiled?(EnvVar.Config) do
+      [prefix] = args
+      config = EnvVar.Config.config()
+      EnvVar.Provider.show_vars(prefix: prefix, env_map: config)
+    else
+      IO.puts("""
+      Error: you must include a module called EnvVar.Config and supply
+      a config/0 function that returns the release config.
+      """)
+    end
   end
 end

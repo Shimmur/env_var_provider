@@ -65,11 +65,11 @@ defmodule EnvVar.Provider do
       for {key, key_config} <- app_config do
         case key_config do
           %{type: _} ->
-            IO.puts lookup_key_for([prefix, app, key])
+            IO.puts(lookup_key_for([prefix, app, key]))
 
           _ ->
             for {list_key, config} <- key_config do
-              IO.puts lookup_key_for([prefix, app, key, list_key])
+              IO.puts(lookup_key_for([prefix, app, key, list_key]))
             end
         end
       end
@@ -106,7 +106,7 @@ defmodule EnvVar.Provider do
 
   defp get_env_value(key, config) do
     key
-    |> System.get_env
+    |> System.get_env()
     |> set_default(config[:default])
     |> convert(config[:type])
   end
