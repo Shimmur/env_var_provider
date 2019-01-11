@@ -68,7 +68,7 @@ defmodule EnvVar.Provider do
             IO.puts(lookup_key_for([prefix, app, key]))
 
           _ ->
-            for {list_key, config} <- key_config do
+            for {list_key, _config} <- key_config do
               IO.puts(lookup_key_for([prefix, app, key, list_key]))
             end
         end
