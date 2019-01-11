@@ -51,13 +51,33 @@ defmodule EnvVar.Provider do
   Default values will overwrite any existing values in the config
   for this environment.
   """
-  def init(prefix: prefix, env_map: env_map) do
-    prefix = if is_atom(prefix) do
-      prefix
-    else
-      String.to_atom(prefix)
-    end
+  def init(prefix: prefix, env_map: env_map) when is_atom(prefix) do
     process_config(env_map, prefix)
+  end
+
+  def init(prefix: prefix, env_map: env_map) do
+    prefix = String.to_atom(prefix)
+    process_config(env_map, prefix)
+  end
+
+  def show_vars(prefix: prefix, env_map: env_map) when is_atom(prefix) do
+    for {app, app_config} <- env_map do
+      for {key, key_config} <- app_config do
+        case key_config do
+          %{type: _} ->
+            IO.puts lookup_key_for([prefix, app, key])
+
+          _ ->
+            for {list_key, config} <- key_config do
+              IO.puts lookup_key_for([prefix, app, key, list_key])
+            end
+        end
+      end
+    end
+  end
+
+  def show_vars(prefix: prefix, env_map: env_map) do
+    show_vars(prefix: String.to_atom(prefix), env_map: env_map)
   end
 
   defp process_config(env_map, prefix) do
@@ -65,7 +85,8 @@ defmodule EnvVar.Provider do
       for {key, key_config} <- app_config do
         case key_config do
           %{type: _} ->
-            get_env_value([prefix, app, key], key_config)
+            lookup_key_for([prefix, app, key])
+            |> get_env_value(key_config)
             |> set_value(app, key)
 
           _ ->
@@ -77,13 +98,14 @@ defmodule EnvVar.Provider do
 
   defp process_list_entry(prefix, app, key, key_config) do
     for {list_key, config} <- key_config do
-      get_env_value([prefix, app, key, list_key], config)
+      lookup_key_for([prefix, app, key, list_key])
+      |> get_env_value(config)
       |> set_list_value(app, key, list_key)
     end
   end
 
-  defp get_env_value(fields, config) do
-    lookup_key_for(fields)
+  defp get_env_value(key, config) do
+    key
     |> System.get_env
     |> set_default(config[:default])
     |> convert(config[:type])
