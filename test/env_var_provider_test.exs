@@ -149,4 +149,10 @@ defmodule EnvVar.ProviderTest do
       assert Application.get_env(:app, EnvVar.Provider) == "original"
     end
   end
+
+  describe "handling conditions that only occur in a release" do
+    test "convert can handle nil" do
+      EnvVar.Provider.convert(nil, :integer)
+    end
+  end
 end

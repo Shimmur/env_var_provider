@@ -127,36 +127,40 @@ defmodule EnvVar.Provider do
     Application.put_env(app, key, newlist)
   end
 
-  defp convert(env_value, :float) do
+  def convert(env_value, _) when is_nil(env_value) do
+    nil
+  end
+
+  def convert(env_value, :float) do
     {val, _extra} = Float.parse(env_value)
     val
   end
 
-  defp convert(env_value, :integer) do
+  def convert(env_value, :integer) do
     {val, _extra} = Integer.parse(env_value)
     val
   end
 
-  defp convert(env_value, :string) do
+  def convert(env_value, :string) do
     env_value
   end
 
-  defp convert(env_value, {:tuple, type}) do
+  def convert(env_value, {:tuple, type}) do
     convert(env_value, {:tuple, type, ","})
   end
 
-  defp convert(env_value, {:tuple, type, separator}) do
+  def convert(env_value, {:tuple, type, separator}) do
     env_value
     |> String.split(separator)
     |> Enum.map(&convert(&1, type))
     |> List.to_tuple()
   end
 
-  defp convert(env_value, {:list, type}) do
+  def convert(env_value, {:list, type}) do
     convert(env_value, {:list, type, ","})
   end
 
-  defp convert(env_value, {:list, type, separator}) do
+  def convert(env_value, {:list, type, separator}) do
     env_value
     |> String.split(separator)
     |> Enum.map(&convert(&1, type))
