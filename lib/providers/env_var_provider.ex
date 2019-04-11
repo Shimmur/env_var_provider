@@ -1,13 +1,11 @@
 defmodule EnvVar.Provider do
   @moduledoc """
   This provider loads a configuration from a map and uses that to set
-  Application environment configuration with the values found in 
+  Application environment configuration with the values found in
   system environment variables. These variable names are constructed
   from the field names directly, following a convention.
   """
   use Mix.Releases.Config.Provider
-
-  require Logger
 
   @doc """
   init is called by Distillery when running the provider during boostrap.
@@ -46,7 +44,7 @@ defmodule EnvVar.Provider do
      to specify the field separator in the env var. Defaults to
      comma.
    * `{:list, <type>}` - Complex type, following the same rules as
-     Tuples above. 
+     Tuples above.
 
   Default values will overwrite any existing values in the config
   for this environment.
@@ -102,16 +100,19 @@ defmodule EnvVar.Provider do
             |> set_value(app, key)
 
           _ ->
-            process_list_entry(prefix, app, key, key_config)
+            process_list_entry(prefix, app, key, enforce, key_config)
         end
       end
     end
   end
 
-  defp process_list_entry(prefix, app, key, key_config) do
+  defp process_list_entry(prefix, app, key, enforce, key_config) do
     for {list_key, config} <- key_config do
-      lookup_key_for([prefix, app, key, list_key])
+      env_var_name = lookup_key_for([prefix, app, key, list_key])
+
+      env_var_name
       |> get_env_value(config)
+      |> validate(app, key, env_var_name, enforce)
       |> set_list_value(app, key, list_key)
     end
   end
@@ -188,8 +189,7 @@ defmodule EnvVar.Provider do
     |> Enum.map(&convert(&1, type))
   end
 
-  defp set_default(value, default, env_var_name) when is_nil(value) do
-    Logger.warn("Using default value for #{env_var_name}")
+  defp set_default(value, default, _env_var_name) when is_nil(value) do
     default
   end
 

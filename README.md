@@ -16,7 +16,7 @@ Add `env_var_provider` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:env_var_provider, "~> 0.1.0", github: "Shimmur/env_var_provider"}
+    {:env_var_provider, "~> 0.2.1", organization: "community"}
   ]
 end
 ```
@@ -110,7 +110,7 @@ Supported types:
    to specify the field separator in the env var. Defaults to
    comma.
  * `{:list, <type>}` - Complex type, following the same rules as
-   Tuples above. 
+   Tuples above.
 
 Default Values
 --------------
