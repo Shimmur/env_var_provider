@@ -50,14 +50,23 @@ defmodule EnvVar.Provider do
 
   Default values will overwrite any existing values in the config
   for this environment.
+
+  #### Calling
+  `init/1` expects to be passed a Keyword List of the form:
+    `init(prefix: "prefix", env_map: map, enforce: false)`
+
+  The `enforce` argument specifies whether values with no default
+  are all required. This will prevent any fallbacks to settings
+  in the config files for values that are configured in the EnvVar
+  Provider.
   """
-  def init(prefix: prefix, env_map: env_map) when is_atom(prefix) do
-    process_config(env_map, prefix)
+  def init(prefix: prefix, env_map: env_map, enforce: enforce) when is_atom(prefix) do
+    process_config(env_map, prefix, enforce)
   end
 
-  def init(prefix: prefix, env_map: env_map) do
+  def init(prefix: prefix, env_map: env_map, enforce: enforce) do
     prefix = String.to_atom(prefix)
-    process_config(env_map, prefix)
+    process_config(env_map, prefix, enforce)
   end
 
   def show_vars(prefix: prefix, env_map: env_map) when is_atom(prefix) do
@@ -80,13 +89,16 @@ defmodule EnvVar.Provider do
     show_vars(prefix: String.to_atom(prefix), env_map: env_map)
   end
 
-  defp process_config(env_map, prefix) do
+  defp process_config(env_map, prefix, enforce) do
     for {app, app_config} <- env_map do
       for {key, key_config} <- app_config do
         case key_config do
           %{type: _} ->
-            lookup_key_for([prefix, app, key])
+            env_var_name = lookup_key_for([prefix, app, key])
+
+            env_var_name
             |> get_env_value(key_config)
+            |> validate(app, key, env_var_name, enforce)
             |> set_value(app, key)
 
           _ ->
@@ -109,6 +121,16 @@ defmodule EnvVar.Provider do
     |> System.get_env()
     |> set_default(config[:default])
     |> convert(config[:type])
+  end
+
+  # Make sure we have a value set of some kind, and then either
+  # log an error, or abort if we're configured to do that.
+  defp validate(value, _app, _key, env_var_name, enforce) do
+    if enforce do
+      raise RuntimeError, message: "Config enforcement on and missing value for #{env_var_name} so crashing"
+    end
+
+    value
   end
 
   defp set_value(value, _app, _key) when is_nil(value) do
