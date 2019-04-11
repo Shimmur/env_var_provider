@@ -157,13 +157,26 @@ defmodule EnvVar.ProviderTest do
   end
 
   describe "when handling enforcement" do
-    test "requires everything when enforce is true", state do
-      System.put_env("BEOWULF_MYCLUSTER_SERVER_COUNT", "67")
-      System.put_env("BEOWULF_MYCLUSTER_NAME", "hrothgar")
-      
+    test "requires everything when enforce is true and there are no defaults" do
+      env_map = %{
+        the_system: %{
+          service_name: %{type: :string}
+        }
+      }
       assert_raise(RuntimeError, fn -> 
-        EnvVar.Provider.init(prefix: "beowulf", env_map: state[:simple], enforce: true)
+        EnvVar.Provider.init(prefix: "beowulf", env_map: env_map, enforce: true)
       end)
+    end
+
+    test "does not raise when defaults are present" do
+      env_map = %{
+        the_system: %{
+          service_name: %{type: :string, default: "beowulf"}
+        }
+      }
+      
+      # Should not raise
+      EnvVar.Provider.init(prefix: "beowulf", env_map: env_map, enforce: true)
     end
   end
 end
