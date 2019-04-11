@@ -51,7 +51,7 @@ release :my_release do
   set(
     # Use the EnvVar provider to handle config overrides
     config_providers: [
-      {EnvVar.Provider, [prefix: "my_release", env_map: env_config]}
+      {EnvVar.Provider, [prefix: "my_release", env_map: env_config, enforce: false]}
     ]
   )
 end
@@ -124,3 +124,11 @@ You have two choices when dealing with default values:
 
 If you supply default values, they will overwrite any existing values in the
 config for this environment.
+
+### Enforcement
+
+For further safety, you may set `enforce: true` in the Keyword list to
+configure the provider. This behavior is the equivalent of setting `required:
+true` on each of the items. This prevents the provider from ever falling back
+to values in the configuration. This is the safest way to guarantee that a
+value, either in the environment, or a default, was set.

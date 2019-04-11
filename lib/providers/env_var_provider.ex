@@ -119,7 +119,7 @@ defmodule EnvVar.Provider do
   defp get_env_value(key, config) do
     key
     |> System.get_env()
-    |> set_default(config[:default])
+    |> set_default(config[:default], key)
     |> convert(config[:type])
   end
 
@@ -188,11 +188,12 @@ defmodule EnvVar.Provider do
     |> Enum.map(&convert(&1, type))
   end
 
-  defp set_default(value, default) when is_nil(value) do
+  defp set_default(value, default, env_var_name) when is_nil(value) do
+    Logger.warn("Using default value for #{env_var_name}")
     default
   end
 
-  defp set_default(value, default) do
+  defp set_default(value, default, _env_var_name) do
     if String.length(value) < 1 do
       default
     else
