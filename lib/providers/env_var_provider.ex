@@ -100,16 +100,19 @@ defmodule EnvVar.Provider do
             |> set_value(app, key)
 
           _ ->
-            process_list_entry(prefix, app, key, key_config)
+            process_list_entry(prefix, app, key, enforce, key_config)
         end
       end
     end
   end
 
-  defp process_list_entry(prefix, app, key, key_config) do
+  defp process_list_entry(prefix, app, key, enforce, key_config) do
     for {list_key, config} <- key_config do
-      lookup_key_for([prefix, app, key, list_key])
+      env_var_name = lookup_key_for([prefix, app, key, list_key])
+
+      env_var_name
       |> get_env_value(config)
+      |> validate(app, key, env_var_name, enforce)
       |> set_list_value(app, key, list_key)
     end
   end

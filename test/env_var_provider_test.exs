@@ -168,6 +168,20 @@ defmodule EnvVar.ProviderTest do
       end)
     end
 
+    test "requires everything when enforce is true and there are no defaults for list entries" do
+      env_map = %{
+        the_system: %{
+          service_name: %{
+            something: %{type: :string}
+          }
+        }
+      }
+
+      assert_raise(RuntimeError, fn ->
+        EnvVar.Provider.init(prefix: "beowulf", env_map: env_map, enforce: true)
+      end)
+    end
+
     test "does not raise when defaults are present and keys are missing" do
       env_map = %{
         the_system: %{
