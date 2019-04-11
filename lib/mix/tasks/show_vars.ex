@@ -14,6 +14,7 @@ defmodule Mix.Tasks.ShowVars do
   end
 
   def run(args) do
+    Mix.Task.run("compile")
     if Code.ensure_compiled?(EnvVar.Config) do
       [prefix] = args
       config = EnvVar.Config.config()
