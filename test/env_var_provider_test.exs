@@ -1,5 +1,6 @@
 defmodule EnvVar.ProviderTest do
   use ExUnit.Case
+  import ExUnit.CaptureLog
 
   doctest EnvVar.Provider
 
@@ -67,8 +68,9 @@ defmodule EnvVar.ProviderTest do
   end
 
   describe "when the value is a Keyword list" do
+    @tag capture_log: true
     test "it correctly defaults values for numbers, strings, lists, tuples", state do
-      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:complex])
+      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:complex], enforce: false)
 
       conf = Application.get_env(:mycluster, :cluster_options, :port)
       assert Keyword.get(conf, :port) == 9042
@@ -77,12 +79,13 @@ defmodule EnvVar.ProviderTest do
       assert Keyword.get(conf, :list_key) == [1, 2, 3]
     end
 
+    @tag capture_log: true
     test "it pulls in the right env var values", state do
       System.put_env("BEOWULF_MYCLUSTER_CLUSTER_OPTIONS_CREDENTIALS", "myuser,mypass")
       System.put_env("BEOWULF_MYCLUSTER_CLUSTER_OPTIONS_PORT", "11121")
       System.put_env("BEOWULF_MYCLUSTER_CLUSTER_OPTIONS_LIST_KEY", "6,7,8")
 
-      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:complex])
+      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:complex], enforce: false)
       conf = Application.get_env(:mycluster, :cluster_options, :port)
 
       assert Keyword.get(conf, :port) == 11121
@@ -92,15 +95,17 @@ defmodule EnvVar.ProviderTest do
   end
 
   describe "when dealing with simple values" do
+    @tag capture_log: true
     test "it handles empty prefix", state do
       System.put_env("MYCLUSTER_SERVER_COUNT", "67")
-      EnvVar.Provider.init(prefix: "", env_map: state[:simple])
+      EnvVar.Provider.init(prefix: "", env_map: state[:simple], enforce: false)
 
       assert Application.get_env(:mycluster, :server_count) == 67
     end
 
+    @tag capture_log: true
     test "it correctly defaults values for numbers, strings, lists, tuples", state do
-      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:simple])
+      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:simple], enforce: false)
 
       assert Application.get_env(:mycluster, :server_count) == 123
       assert Application.get_env(:mycluster, :name) == "grendel"
@@ -108,51 +113,85 @@ defmodule EnvVar.ProviderTest do
       assert Application.get_env(:mycluster, :keys) == {1.1, 2.3, 3.4}
     end
 
+    @tag capture_log: true
     test "it pulls in the right env var values", state do
       System.put_env("BEOWULF_MYCLUSTER_SERVER_COUNT", "67")
       System.put_env("BEOWULF_MYCLUSTER_NAME", "hrothgar")
       System.put_env("BEOWULF_MYCLUSTER_SETTINGS", "good,tall")
       System.put_env("BEOWULF_MYCLUSTER_KEYS", "3.2,5.6,7.8")
 
-      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:simple])
+      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:simple], enforce: false)
 
       assert Application.get_env(:mycluster, :name) == "hrothgar"
       assert Application.get_env(:mycluster, :settings) == ["good", "tall"]
       assert Application.get_env(:mycluster, :keys) == {3.2, 5.6, 7.8}
     end
 
+    @tag capture_log: true
     test "creates new values with defaults that didn't already exist", state do
-      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:simple])
+      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:simple], enforce: false)
 
       assert "envoygw" == Application.get_env(:the_system, :service_name)
     end
   end
 
   describe "when dealing with Elixir module atom keys" do
+    @tag capture_log: true
     test "it handles Elixir modules as keys cleanly", state do
       System.put_env("BEOWULF_APP_ENVVAR_PROVIDER", "different")
 
-      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:elixir_mod])
+      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:elixir_mod], enforce: false)
 
       assert Application.get_env(:app, EnvVar.Provider) == "different"
     end
   end
 
   describe "when there is no default value" do
+    @tag capture_log: true
     test "it defaults to what is in the config already", state do
       Application.put_env(:app, EnvVar.Provider, "original")
       map = state[:elixir_mod]
       map = update_in(map, [:app, EnvVar.Provider], &Map.delete(&1, :default))
 
-      EnvVar.Provider.init(prefix: "beowulf", env_map: map)
+      EnvVar.Provider.init(prefix: "beowulf", env_map: map, enforce: false)
 
       assert Application.get_env(:app, EnvVar.Provider) == "original"
     end
   end
 
   describe "handling conditions that only occur in a release" do
+    @tag capture_log: true
     test "convert can handle nil" do
       EnvVar.Provider.convert(nil, :integer)
+    end
+  end
+
+  describe "when handling enforcement" do
+    @tag capture_log: true
+    test "requires everything when enforce is true and there are no defaults" do
+      env_map = %{
+        the_system: %{
+          service_name: %{type: :string}
+        }
+      }
+      assert_raise(RuntimeError, fn -> 
+        EnvVar.Provider.init(prefix: "beowulf", env_map: env_map, enforce: true)
+      end)
+    end
+
+    test "does not raise when defaults are present and keys are missing" do
+      env_map = %{
+        the_system: %{
+          service_name: %{type: :string, default: "beowulf"}
+        }
+      }
+      
+      # Should not raise
+      logs = capture_log(fn ->
+        EnvVar.Provider.init(prefix: "beowulf", env_map: env_map, enforce: true)
+      end)
+
+      assert String.contains?(logs, "default value for BEOWULF_THE_SYSTEM_SERVICE_NAME")
     end
   end
 end
