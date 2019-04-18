@@ -150,6 +150,14 @@ defmodule EnvVar.Provider do
     Application.put_env(app, key, newlist)
   end
 
+  def convert({:default, default}, _) do
+    default
+  end
+
+  def convert({:value, value}, type) do
+    convert(value, type)
+  end
+
   def convert(env_value, _) when is_nil(env_value) do
     nil
   end
@@ -190,14 +198,14 @@ defmodule EnvVar.Provider do
   end
 
   defp set_default(value, default, _env_var_name) when is_nil(value) do
-    default
+    {:default, default}
   end
 
   defp set_default(value, default, _env_var_name) do
     if String.length(value) < 1 do
-      default
+      {:default, default}
     else
-      value
+      {:value, value}
     end
   end
 
