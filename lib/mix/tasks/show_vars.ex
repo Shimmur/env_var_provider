@@ -15,9 +15,13 @@ defmodule Mix.Tasks.ShowVars do
 
   def run(args) do
     Mix.Task.run("compile")
-    if Code.ensure_compiled?(EnvVar.Config) do
+
+    # Dynamic module name avoids compilation warnings.
+    config_module = EnvVar.Config
+
+    if Code.ensure_compiled?(config_module) do
       [prefix] = args
-      config = EnvVar.Config.config()
+      config = config_module.config()
       EnvVar.Provider.show_vars(prefix: prefix, env_map: config)
     else
       IO.puts("""
