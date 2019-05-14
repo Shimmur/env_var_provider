@@ -9,25 +9,24 @@ defmodule Mix.Tasks.ShowVars do
 
   use Mix.Task
 
-  def run(args) when length(args) < 1 do
-    IO.puts("Error: You must specify a prefix, or '' if you want none")
-  end
-
-  def run(args) do
+  def run([prefix]) do
     Mix.Task.run("compile")
 
     # Dynamic module name avoids compilation warnings.
     config_module = EnvVar.Config
 
     if Code.ensure_compiled?(config_module) do
-      [prefix] = args
       config = config_module.config()
       EnvVar.Provider.show_vars(prefix: prefix, env_map: config)
     else
-      IO.puts("""
-      Error: you must include a module called EnvVar.Config and supply
+      Mix.raise("""
+      You must include a module called EnvVar.Config and supply
       a config/0 function that returns the release config.
       """)
     end
+  end
+
+  def run(_args) do
+    Mix.raise("You must specify a single prefix, or '' if you want none")
   end
 end
