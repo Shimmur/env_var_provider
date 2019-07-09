@@ -50,6 +50,19 @@ defmodule EnvVar.ProviderTest do
       }
     }
 
+    deep_merged_config = %{
+      mycluster: %{
+        sys_logger: %{
+          metadata: %{
+            environment: %{type: :string},
+            deeper: %{
+              port: %{type: :integer}
+            }
+          }
+        }
+      }
+    }
+
     on_exit(fn ->
       System.put_env("BEOWULF_MYCLUSTER_CLUSTER_OPTIONS_CREDENTIALS", "")
       System.put_env("BEOWULF_MYCLUSTER_CLUSTER_OPTIONS_PORT", "")
@@ -62,7 +75,14 @@ defmodule EnvVar.ProviderTest do
       :ok
     end)
 
-    {:ok, complex: complex_config, simple: simple_config, elixir_mod: elixir_module_config}
+    state = [
+      complex: complex_config,
+      simple: simple_config,
+      elixir_mod: elixir_module_config,
+      deep_merged: deep_merged_config
+    ]
+
+    {:ok, state}
   end
 
   describe "when the value is a Keyword list" do
@@ -87,6 +107,56 @@ defmodule EnvVar.ProviderTest do
       assert Keyword.get(conf, :port) == 11121
       assert Keyword.get(conf, :credentials) == {"myuser", "mypass"}
       assert Keyword.get(conf, :list_key) == [6, 7, 8]
+    end
+
+    test "it reads deeply merged config", state do
+      System.put_env("BEOWULF_MYCLUSTER_SYS_LOGGER_METADATA_ENVIRONMENT", "dev")
+      System.put_env("BEOWULF_MYCLUSTER_SYS_LOGGER_METADATA_DEEPER_PORT", "9090")
+
+      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:deep_merged], enforce: false)
+
+      config = Application.get_env(:mycluster, :sys_logger)
+
+      assert config[:metadata][:environment] == "dev"
+      assert config[:metadata][:deeper][:port] == 9090
+    after
+      System.delete_env("BEOWULF_MYCLUSTER_SYS_LOGGER_METADATA_ENVIRONMENT")
+      System.delete_env("BEOWULF_MYCLUSTER_SYS_LOGGER_METADATA_DEEPER_PORT")
+    end
+
+    test "it performs deep merging", state do
+      System.put_env("BEOWULF_MYCLUSTER_SYS_LOGGER_METADATA_ENVIRONMENT", "prod")
+      System.put_env("BEOWULF_MYCLUSTER_SYS_LOGGER_METADATA_DEEPER_PORT", "9090")
+
+      starting_config = [metadata: [environment: "dev", name: "foo", deeper: [address: "localhost"]]]
+      Application.put_env(:mycluster, :sys_logger, starting_config)
+
+      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:deep_merged], enforce: false)
+
+      config = Application.get_env(:mycluster, :sys_logger)
+
+      assert config[:metadata][:environment] == "prod"
+      assert config[:metadata][:name] == "foo"
+      assert config[:metadata][:deeper][:address] == "localhost"
+      assert config[:metadata][:deeper][:port] == 9090
+    after
+      System.delete_env("BEOWULF_MYCLUSTER_SYS_LOGGER_METADATA_ENVIRONMENT")
+      System.delete_env("BEOWULF_MYCLUSTER_SYS_LOGGER_METADATA_DEEPER_PORT")
+    end
+
+    test "it doesn't overwrite values with nil when deep merging", state do
+      System.put_env("BEOWULF_MYCLUSTER_SYS_LOGGER_METADATA_ENVIRONMENT", "")
+
+      starting_config = [metadata: [environment: "dev"]]
+      Application.put_env(:mycluster, :sys_logger, starting_config)
+
+      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:deep_merged], enforce: false)
+
+      config = Application.get_env(:mycluster, :sys_logger)
+
+      assert config[:metadata][:environment] == "dev"
+    after
+      System.delete_env("BEOWULF_MYCLUSTER_SYS_LOGGER_METADATA_ENVIRONMENT")
     end
   end
 

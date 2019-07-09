@@ -70,15 +70,7 @@ defmodule EnvVar.Provider do
   def show_vars(prefix: prefix, env_map: env_map) when is_atom(prefix) do
     for {app, app_config} <- env_map do
       for {key, key_config} <- app_config do
-        case key_config do
-          %{type: _} ->
-            IO.puts(lookup_key_for([prefix, app, key]))
-
-          _ ->
-            for {list_key, _config} <- key_config do
-              IO.puts(lookup_key_for([prefix, app, key, list_key]))
-            end
-        end
+        show_vars(prefix, [app, key], key_config)
       end
     end
   end
@@ -87,33 +79,77 @@ defmodule EnvVar.Provider do
     show_vars(prefix: String.to_atom(prefix), env_map: env_map)
   end
 
+  defp show_vars(prefix, path, %{type: _}) do
+    IO.puts(lookup_key_for([prefix | path]))
+  end
+
+  defp show_vars(prefix, path, config) do
+    for {key, nested_config} <- config do
+      show_vars(prefix, path ++ [key], nested_config)
+    end
+  end
+
   defp process_config(env_map, prefix, enforce) do
     for {app, app_config} <- env_map do
       for {key, key_config} <- app_config do
-        case key_config do
-          %{type: _} ->
-            env_var_name = lookup_key_for([prefix, app, key])
-
-            env_var_name
-            |> get_env_value(key_config)
-            |> validate(app, key, env_var_name, enforce)
-            |> set_value(app, key)
-
-          _ ->
-            process_list_entry(prefix, app, key, enforce, key_config)
-        end
+        process_and_merge_config(prefix, enforce, app, key, key_config)
       end
     end
   end
 
-  defp process_list_entry(prefix, app, key, enforce, key_config) do
-    for {list_key, config} <- key_config do
-      env_var_name = lookup_key_for([prefix, app, key, list_key])
+  defp process_and_merge_config(prefix, enforce, app, key, key_config) do
+    case key_config do
+      %{type: _} ->
+        new_config = parse_config(prefix, enforce, [app, key], key_config)
 
-      env_var_name
-      |> get_env_value(config)
-      |> validate(app, key, env_var_name, enforce)
-      |> set_list_value(app, key, list_key)
+        if not is_nil(new_config) do
+          Application.put_env(app, key, new_config)
+        end
+
+      _other ->
+        current = Application.get_env(app, key, [])
+        new_config = parse_config(prefix, enforce, [app, key], key_config)
+        Application.put_env(app, key, deep_merge(current, new_config))
+    end
+  end
+
+  defp parse_config(prefix, enforce, path, %{type: _} = schema) do
+    env_var_name = lookup_key_for([prefix | path])
+
+    env_var_name
+    |> get_env_value(schema)
+    |> validate(env_var_name, enforce)
+  end
+
+  defp parse_config(prefix, enforce, path, nested_schema) do
+    for {key, schema} <- nested_schema do
+      {key, parse_config(prefix, enforce, path ++ [key], schema)}
+    end
+  end
+
+  defp deep_merge(config1, config2) do
+    cond do
+      Keyword.keyword?(config1) and Keyword.keyword?(config2) ->
+        Keyword.merge(config1, config2, &deep_merge/3)
+
+      is_nil(config2) ->
+        config1
+
+      true ->
+        config2
+    end
+  end
+
+  defp deep_merge(_key, value1, value2) do
+    cond do
+      Keyword.keyword?(value1) and Keyword.keyword?(value2) ->
+        Keyword.merge(value1, value2, &deep_merge/3)
+
+      is_nil(value2) ->
+        value1
+
+      true ->
+        value2
     end
   end
 
@@ -126,28 +162,12 @@ defmodule EnvVar.Provider do
 
   # Make sure we have a value set of some kind, and then either
   # log an error, or abort if we're configured to do that.
-  defp validate(value, _app, _key, env_var_name, enforce) do
+  defp validate(value, env_var_name, enforce) do
     if (is_nil(value) || value == "") && enforce do
       raise RuntimeError, message: "Config enforcement on and missing value for #{env_var_name} so crashing"
     end
 
     value
-  end
-
-  defp set_value(value, _app, _key) when is_nil(value) do
-  end
-
-  defp set_value(value, app, key) do
-    Application.put_env(app, key, value)
-  end
-
-  defp set_list_value(value, _app, _key, _list_key) when is_nil(value) do
-  end
-
-  defp set_list_value(value, app, key, list_key) do
-    keylist = Application.get_env(app, key)
-    newlist = Keyword.put(keylist, list_key, value)
-    Application.put_env(app, key, newlist)
   end
 
   def convert({:default, default}, _) do
