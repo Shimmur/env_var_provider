@@ -24,10 +24,10 @@ defmodule EnvVar.ProviderTest do
     complex_config = %{
       mycluster: %{
         cluster_options: %{
-          credentials: %{type: {:tuple, :string}, default: "user,pass"},
+          credentials: %{type: {:tuple, :string}, default: {"user", "pass"}},
           contact_points: %{type: :string, default: "127.0.0.1"},
-          port: %{type: :integer, default: "9042"},
-          list_key: %{type: {:list, :integer}, default: "1,2,3"}
+          port: %{type: :integer, default: 9042},
+          list_key: %{type: {:list, :integer}, default: [1, 2, 3]}
         }
       }
     }
@@ -37,10 +37,10 @@ defmodule EnvVar.ProviderTest do
         service_name: %{type: :string, default: "envoygw"}
       },
       mycluster: %{
-        server_count: %{type: :integer, default: "123"},
+        server_count: %{type: :integer, default: 123},
         name: %{type: :string, default: "grendel"},
-        settings: %{type: {:list, :string}, default: "swarthy,hairy"},
-        keys: %{type: {:tuple, :float}, default: "1.1,2.3,3.4"}
+        settings: %{type: {:list, :string}, default: ["swarthy", "hairy"]},
+        keys: %{type: {:tuple, :float}, default: {1.1, 2.3, 3.4}}
       }
     }
 
