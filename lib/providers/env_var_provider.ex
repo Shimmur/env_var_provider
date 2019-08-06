@@ -204,9 +204,14 @@ defmodule EnvVar.Provider do
   end
 
   def convert(env_value, {:list, type, separator}) do
-    env_value
+    list = env_value
     |> String.split(separator)
     |> Enum.map(&convert(&1, type))
+
+    case list do
+      [""] -> []
+      other -> other
+    end
   end
 
   defp set_default(value, default, _env_var_name) when is_nil(value) do
