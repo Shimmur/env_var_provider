@@ -1,0 +1,19 @@
+language: elixir
+
+os: linux
+
+dist: xenial
+
+elixir:
+  - 1.8.1
+
+otp_release:
+  - 21.2
+
+sudo: required
+
+script:
+  - set -e
+  - mix format --check-formatted --dry-run
+  - mix lint.credo
+  - mix test
