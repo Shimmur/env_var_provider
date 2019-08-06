@@ -12,6 +12,11 @@ otp_release:
 
 sudo: required
 
+before_install:
+  - set -e
+  - mix local.hex --force
+  - mix hex.organization auth community --key $HEXPM_KEY
+
 script:
   - set -e
   - mix format --check-formatted --dry-run
