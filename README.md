@@ -1,5 +1,3 @@
-[![Build Status](https://travis-ci.com/Shimmur/env_var_provider.svg?branch=master)](https://travis-ci.com/Shimmur/env_var_provider)
-
 EnvVarProvider
 ==============
 
