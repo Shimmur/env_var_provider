@@ -163,7 +163,7 @@ defmodule EnvVar.Provider do
   # Make sure we have a value set of some kind, and then either
   # log an error, or abort if we're configured to do that.
   defp validate(value, env_var_name, enforce) do
-    if (is_nil(value) || value == "") && enforce do
+    if (is_nil(value) or value == "") && enforce do
       raise RuntimeError, message: "Config enforcement on and missing value for #{env_var_name} so crashing"
     end
 

@@ -1,0 +1,29 @@
+language: elixir
+
+os: linux
+
+dist: xenial
+
+elixir:
+  - 1.8.1
+
+otp_release:
+  - 21.2
+
+sudo: required
+
+cache:
+  directories:
+    - deps
+
+before_install:
+  - set -e
+  - mix local.hex --force
+  - mix hex.organization auth community --key $HEXPM_KEY
+  - sleep 1
+
+script:
+  - set -e
+  - mix format --check-formatted --dry-run
+  - mix lint.credo
+  - mix test
