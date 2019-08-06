@@ -204,9 +204,10 @@ defmodule EnvVar.Provider do
   end
 
   def convert(env_value, {:list, type, separator}) do
-    list = env_value
-    |> String.split(separator)
-    |> Enum.map(&convert(&1, type))
+    list =
+      env_value
+      |> String.split(separator)
+      |> Enum.map(&convert(&1, type))
 
     case list do
       [""] -> []
