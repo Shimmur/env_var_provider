@@ -40,7 +40,8 @@ defmodule EnvVar.ProviderTest do
         server_count: %{type: :integer, default: "123"},
         name: %{type: :string, default: "grendel"},
         settings: %{type: {:list, :string}, default: "swarthy,hairy"},
-        keys: %{type: {:tuple, :float}, default: "1.1,2.3,3.4"}
+        keys: %{type: {:tuple, :float}, default: "1.1,2.3,3.4"},
+        empty_string_list: %{type: {:list, :string}, default: ""}
       }
     }
 
@@ -175,6 +176,7 @@ defmodule EnvVar.ProviderTest do
       assert Application.get_env(:mycluster, :name) == "grendel"
       assert Application.get_env(:mycluster, :settings) == ["swarthy", "hairy"]
       assert Application.get_env(:mycluster, :keys) == {1.1, 2.3, 3.4}
+      assert Application.get_env(:mycluster, :empty_string_list) == []
     end
 
     test "it pulls in the right env var values", state do
