@@ -4,7 +4,7 @@ defmodule EnvVarProvider.MixProject do
   def project do
     [
       app: :env_var_provider,
-      version: "0.3.0",
+      version: "0.4.0",
       elixir: "~> 1.7",
       start_permanent: Mix.env() == :prod,
       description: description(),
@@ -21,7 +21,7 @@ defmodule EnvVarProvider.MixProject do
 
   defp deps do
     [
-      {:distillery, "~> 2.0"},
+      {:distillery, "~> 2.0.0"},
       {:ex_doc, ">= 0.0.0", only: :dev},
       {:linter, "~> 0.2", organization: "community", runtime: false, only: [:dev, :test]}
     ]
