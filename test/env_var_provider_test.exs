@@ -160,6 +160,68 @@ defmodule EnvVar.ProviderTest do
     end
   end
 
+  describe "option validation in init/1" do
+    test "validates :prefix" do
+      assert_raise ArgumentError, ~r/:prefix should be/, fn ->
+        EnvVar.Provider.init(prefix: 44, env_map: %{})
+      end
+
+      assert_raise KeyError, ~r/key :prefix not found/, fn ->
+        EnvVar.Provider.init(env_map: %{})
+      end
+    end
+
+    test "validates :env_map" do
+      assert_raise ArgumentError, ~r/:env_map should be/, fn ->
+        EnvVar.Provider.init(prefix: "beowulf", env_map: :not_a_map)
+      end
+
+      assert_raise KeyError, ~r/key :env_map not found/, fn ->
+        EnvVar.Provider.init(prefix: "beowulf")
+      end
+    end
+
+    test "validates :enforce" do
+      assert_raise ArgumentError, ~r/:enforce should be/, fn ->
+        EnvVar.Provider.init(prefix: "beowulf", env_map: %{}, enforce: "not a boolean")
+      end
+    end
+  end
+
+  describe "when converting typed values" do
+    test "integers", state do
+      System.put_env("BEOWULF_MYCLUSTER_SERVER_COUNT", "44")
+
+      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:simple], enforce: false)
+
+      assert Application.get_env(:mycluster, :server_count) == 44
+
+      System.put_env("BEOWULF_MYCLUSTER_SERVER_COUNT", "not an integer")
+
+      assert_raise ArgumentError, ~r/expected integer/, fn ->
+        EnvVar.Provider.init(prefix: "beowulf", env_map: state[:simple], enforce: false)
+      end
+    after
+      System.delete_env("BEOWULF_MYCLUSTER_SERVER_COUNT")
+    end
+
+    test "floats", state do
+      System.put_env("BEOWULF_MYCLUSTER_KEYS", "3.14,6.28")
+
+      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:simple], enforce: false)
+
+      assert Application.get_env(:mycluster, :keys) == {3.14, 6.28}
+
+      System.put_env("BEOWULF_MYCLUSTER_KEYS", "3.14,notafloat")
+
+      assert_raise ArgumentError, ~r/expected float/, fn ->
+        EnvVar.Provider.init(prefix: "beowulf", env_map: state[:simple], enforce: false)
+      end
+    after
+      System.delete_env("BEOWULF_MYCLUSTER_KEYS")
+    end
+  end
+
   describe "when dealing with simple values" do
     test "it handles empty prefix", state do
       System.put_env("MYCLUSTER_SERVER_COUNT", "67")
