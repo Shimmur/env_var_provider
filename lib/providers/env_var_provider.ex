@@ -58,25 +58,38 @@ defmodule EnvVar.Provider do
   in the config files for values that are configured in the EnvVar
   Provider.
   """
-  def init(prefix: prefix, env_map: env_map, enforce: enforce) when is_atom(prefix) do
-    process_config(env_map, prefix, enforce)
+  def init(opts) do
+    env_map =
+      case Keyword.fetch!(opts, :env_map) do
+        map when is_map(map) -> map
+        other -> raise ArgumentError, ":env_map should be a map, got: #{inspect(other)}"
+      end
+
+    prefix =
+      case Keyword.fetch!(opts, :prefix) do
+        atom when is_atom(atom) -> atom
+        binary when is_binary(binary) -> String.to_atom(binary)
+        other -> raise ArgumentError, ":prefix should be atom or string, got: #{inspect(other)}"
+      end
+
+    enforce? =
+      case Keyword.get(opts, :enforce, true) do
+        bool when is_boolean(bool) -> bool
+        other -> raise ArgumentError, ":enforce should be a boolean, got: #{inspect(other)}"
+      end
+
+    process_config(env_map, prefix, enforce?)
   end
 
-  def init(prefix: prefix, env_map: env_map, enforce: enforce) do
-    prefix = String.to_atom(prefix)
-    process_config(env_map, prefix, enforce)
-  end
+  def show_vars(opts) do
+    prefix = opts |> Keyword.fetch!(:prefix) |> String.to_atom()
+    env_map = Keyword.fetch!(opts, :env_map)
 
-  def show_vars(prefix: prefix, env_map: env_map) when is_atom(prefix) do
     for {app, app_config} <- env_map do
       for {key, key_config} <- app_config do
         show_vars(prefix, [app, key], key_config)
       end
     end
-  end
-
-  def show_vars(prefix: prefix, env_map: env_map) do
-    show_vars(prefix: String.to_atom(prefix), env_map: env_map)
   end
 
   defp show_vars(prefix, path, %{type: _}) do
@@ -154,10 +167,8 @@ defmodule EnvVar.Provider do
   end
 
   defp get_env_value(key, config) do
-    key
-    |> System.get_env()
-    |> set_default(config[:default], key)
-    |> convert(config[:type])
+    value = System.get_env(key) || config[:default]
+    convert(value, config[:type])
   end
 
   # Make sure we have a value set of some kind, and then either
@@ -175,13 +186,17 @@ defmodule EnvVar.Provider do
   end
 
   def convert(env_value, :float) do
-    {val, _extra} = Float.parse(env_value)
-    val
+    case Float.parse(env_value) do
+      {value, ""} -> value
+      _other -> raise ArgumentError, "expected float, got: #{inspect(env_value)}"
+    end
   end
 
   def convert(env_value, :integer) do
-    {val, _extra} = Integer.parse(env_value)
-    val
+    case Integer.parse(env_value) do
+      {value, ""} -> value
+      _other -> raise ArgumentError, "expected integer, got: #{inspect(env_value)}"
+    end
   end
 
   def convert(env_value, :string) do
@@ -207,18 +222,6 @@ defmodule EnvVar.Provider do
     env_value
     |> String.split(separator)
     |> Enum.map(&convert(&1, type))
-  end
-
-  defp set_default(value, default, _env_var_name) when is_nil(value) do
-    default
-  end
-
-  defp set_default(value, default, _env_var_name) do
-    if String.length(value) < 1 do
-      default
-    else
-      value
-    end
   end
 
   defp lookup_key_for(fields) do

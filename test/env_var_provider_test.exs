@@ -64,14 +64,14 @@ defmodule EnvVar.ProviderTest do
     }
 
     on_exit(fn ->
-      System.put_env("BEOWULF_MYCLUSTER_CLUSTER_OPTIONS_CREDENTIALS", "")
-      System.put_env("BEOWULF_MYCLUSTER_CLUSTER_OPTIONS_PORT", "")
-      System.put_env("BEOWULF_MYCLUSTER_CLUSTER_OPTIONS_LIST_KEY", "")
-      System.put_env("BEOWULF_MYCLUSTER_SERVER_COUNT", "")
-      System.put_env("BEOWULF_MYCLUSTER_NAME", "")
-      System.put_env("BEOWULF_MYCLUSTER_SETTINGS", "")
-      System.put_env("BEOWULF_MYCLUSTER_KEYS", "")
-      System.put_env("BEOWULF_APP_ENVVAR_PROVIDER", "")
+      System.delete_env("BEOWULF_MYCLUSTER_CLUSTER_OPTIONS_CREDENTIALS")
+      System.delete_env("BEOWULF_MYCLUSTER_CLUSTER_OPTIONS_PORT")
+      System.delete_env("BEOWULF_MYCLUSTER_CLUSTER_OPTIONS_LIST_KEY")
+      System.delete_env("BEOWULF_MYCLUSTER_SERVER_COUNT")
+      System.delete_env("BEOWULF_MYCLUSTER_NAME")
+      System.delete_env("BEOWULF_MYCLUSTER_SETTINGS")
+      System.delete_env("BEOWULF_MYCLUSTER_KEYS")
+      System.delete_env("BEOWULF_APP_ENVVAR_PROVIDER")
       :ok
     end)
 
@@ -145,7 +145,7 @@ defmodule EnvVar.ProviderTest do
     end
 
     test "it doesn't overwrite values with nil when deep merging", state do
-      System.put_env("BEOWULF_MYCLUSTER_SYS_LOGGER_METADATA_ENVIRONMENT", "")
+      System.delete_env("BEOWULF_MYCLUSTER_SYS_LOGGER_METADATA_ENVIRONMENT")
 
       starting_config = [metadata: [environment: "dev"]]
       Application.put_env(:mycluster, :sys_logger, starting_config)
@@ -157,6 +157,68 @@ defmodule EnvVar.ProviderTest do
       assert config[:metadata][:environment] == "dev"
     after
       System.delete_env("BEOWULF_MYCLUSTER_SYS_LOGGER_METADATA_ENVIRONMENT")
+    end
+  end
+
+  describe "option validation in init/1" do
+    test "validates :prefix" do
+      assert_raise ArgumentError, ~r/:prefix should be/, fn ->
+        EnvVar.Provider.init(prefix: 44, env_map: %{})
+      end
+
+      assert_raise KeyError, ~r/key :prefix not found/, fn ->
+        EnvVar.Provider.init(env_map: %{})
+      end
+    end
+
+    test "validates :env_map" do
+      assert_raise ArgumentError, ~r/:env_map should be/, fn ->
+        EnvVar.Provider.init(prefix: "beowulf", env_map: :not_a_map)
+      end
+
+      assert_raise KeyError, ~r/key :env_map not found/, fn ->
+        EnvVar.Provider.init(prefix: "beowulf")
+      end
+    end
+
+    test "validates :enforce" do
+      assert_raise ArgumentError, ~r/:enforce should be/, fn ->
+        EnvVar.Provider.init(prefix: "beowulf", env_map: %{}, enforce: "not a boolean")
+      end
+    end
+  end
+
+  describe "when converting typed values" do
+    test "integers", state do
+      System.put_env("BEOWULF_MYCLUSTER_SERVER_COUNT", "44")
+
+      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:simple], enforce: false)
+
+      assert Application.get_env(:mycluster, :server_count) == 44
+
+      System.put_env("BEOWULF_MYCLUSTER_SERVER_COUNT", "not an integer")
+
+      assert_raise ArgumentError, ~r/expected integer/, fn ->
+        EnvVar.Provider.init(prefix: "beowulf", env_map: state[:simple], enforce: false)
+      end
+    after
+      System.delete_env("BEOWULF_MYCLUSTER_SERVER_COUNT")
+    end
+
+    test "floats", state do
+      System.put_env("BEOWULF_MYCLUSTER_KEYS", "3.14,6.28")
+
+      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:simple], enforce: false)
+
+      assert Application.get_env(:mycluster, :keys) == {3.14, 6.28}
+
+      System.put_env("BEOWULF_MYCLUSTER_KEYS", "3.14,notafloat")
+
+      assert_raise ArgumentError, ~r/expected float/, fn ->
+        EnvVar.Provider.init(prefix: "beowulf", env_map: state[:simple], enforce: false)
+      end
+    after
+      System.delete_env("BEOWULF_MYCLUSTER_KEYS")
     end
   end
 
