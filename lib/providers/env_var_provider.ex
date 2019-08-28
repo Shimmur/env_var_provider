@@ -167,10 +167,8 @@ defmodule EnvVar.Provider do
   end
 
   defp get_env_value(key, config) do
-    key
-    |> System.get_env()
-    |> set_default(config[:default])
-    |> convert(config[:type])
+    value = System.get_env(key) || config[:default]
+    convert(value, config[:type])
   end
 
   # Make sure we have a value set of some kind, and then either
@@ -224,14 +222,6 @@ defmodule EnvVar.Provider do
     env_value
     |> String.split(separator)
     |> Enum.map(&convert(&1, type))
-  end
-
-  defp set_default(value, default) when is_nil(value) or value == "" do
-    default
-  end
-
-  defp set_default(value, _default) do
-    value
   end
 
   defp lookup_key_for(fields) do

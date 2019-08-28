@@ -64,14 +64,14 @@ defmodule EnvVar.ProviderTest do
     }
 
     on_exit(fn ->
-      System.put_env("BEOWULF_MYCLUSTER_CLUSTER_OPTIONS_CREDENTIALS", "")
-      System.put_env("BEOWULF_MYCLUSTER_CLUSTER_OPTIONS_PORT", "")
-      System.put_env("BEOWULF_MYCLUSTER_CLUSTER_OPTIONS_LIST_KEY", "")
-      System.put_env("BEOWULF_MYCLUSTER_SERVER_COUNT", "")
-      System.put_env("BEOWULF_MYCLUSTER_NAME", "")
-      System.put_env("BEOWULF_MYCLUSTER_SETTINGS", "")
-      System.put_env("BEOWULF_MYCLUSTER_KEYS", "")
-      System.put_env("BEOWULF_APP_ENVVAR_PROVIDER", "")
+      System.delete_env("BEOWULF_MYCLUSTER_CLUSTER_OPTIONS_CREDENTIALS")
+      System.delete_env("BEOWULF_MYCLUSTER_CLUSTER_OPTIONS_PORT")
+      System.delete_env("BEOWULF_MYCLUSTER_CLUSTER_OPTIONS_LIST_KEY")
+      System.delete_env("BEOWULF_MYCLUSTER_SERVER_COUNT")
+      System.delete_env("BEOWULF_MYCLUSTER_NAME")
+      System.delete_env("BEOWULF_MYCLUSTER_SETTINGS")
+      System.delete_env("BEOWULF_MYCLUSTER_KEYS")
+      System.delete_env("BEOWULF_APP_ENVVAR_PROVIDER")
       :ok
     end)
 
@@ -145,7 +145,7 @@ defmodule EnvVar.ProviderTest do
     end
 
     test "it doesn't overwrite values with nil when deep merging", state do
-      System.put_env("BEOWULF_MYCLUSTER_SYS_LOGGER_METADATA_ENVIRONMENT", "")
+      System.delete_env("BEOWULF_MYCLUSTER_SYS_LOGGER_METADATA_ENVIRONMENT")
 
       starting_config = [metadata: [environment: "dev"]]
       Application.put_env(:mycluster, :sys_logger, starting_config)
