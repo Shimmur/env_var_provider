@@ -19,11 +19,9 @@ cache:
 before_install:
   - set -e
   - mix local.hex --force
-  - mix hex.organization auth community --key $HEXPM_KEY
   - sleep 1
 
 script:
   - set -e
-  - mix format --check-formatted --dry-run
-  - mix lint.credo
+  - mix format --check-formatted
   - mix test
