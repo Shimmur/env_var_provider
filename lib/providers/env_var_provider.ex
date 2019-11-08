@@ -1,64 +1,90 @@
 defmodule EnvVar.Provider do
   @moduledoc """
-  This provider loads a configuration from a map and uses that to set
-  Application environment configuration with the values found in
-  system environment variables. These variable names are constructed
-  from the field names directly, following a convention.
+  A `Config.Provider` that reads a *configuration schema* from a map and
+  reads configuration from environment variables.
+
+  Variable names are constructed from the field names directly,
+  following a convention.
+
+  ## Usage
+
+  Define a `EnvVar.Config` module that exports a `config/0` function:
+
+      defmodule EnvVar.Config do
+        def config do
+          %{
+            my_app: %{
+              port: %{type: :integer}
+            }
+          }
+        end
+      end
+
+  Now you can add `EnvVar.Provider` as a config provider in your release configuration:
+
+      def project do
+        [
+          # ...,
+          releases: [
+            my_release: [
+              config_providers: [{EnvVar.Provider, prefix: "", enforce: true, env_map: EnvVar.Config.config()}]
+            ]
+          ]
+        ]
+
+  ## Options
+
+    * `:enforce` - (boolean) if `true`, raise an error if any environment variables are not
+      present when reading the configuration. Required.
+
+    * `:prefix` - (string or atom) prepended to the name of system environment variables.
+      For example, if you pass `prefix: "BEOWULF_"` and you want to configure `:port` inside
+      `:my_app`, the environment variable name will be `BEOWULF_MY_APP_PORT`. Required.
+
+    * `:env_map` - (map) the configuration schema. You'll mostly call `EnvVar.Config.config/0`
+      to get this.
+
+  ## Configuration schema
+
+  The configuration schema is a map with applications as the top-level keys and maps
+  of configuration as their values. The schema for each configuration option is a map
+  with at least the `:type` key.
+
+      %{
+        my_app: %{
+          port: %{type: :integer}
+        }
+      }
+
+  The supported schema properties are:
+
+    * `:type` - see below
+
+    * `:default` - the default value if no environment variable is found.
+      This value will be parsed just like the environment variable would,
+      so it should always be a string.
+
+  The supported types are:
+
+    * simple types - `:string`, `:integer`, or `:float`
+
+    * `{:tuple, TYPE, SEPARATOR}` - complex type where the second field
+    is one of the simple types above. `SEPARATOR` is used as the separator.
+
+    * `{:tuple, TYPE}` - same as `{:tuple, TYPE, ","}`.
+
+    * `{:list, TYPE, SEPARATOR}` and `{:list, TYPE}` - complex type that
+      behaves like `{:tuple, ...}` but parsing to a list.
+
+  ## Variable name convention
+
+  `EnvVar.Provider` will look for system environment variables by upcasing configuration names
+  and separating with underscores. For example, if you configure the `:port` key of the `:my_app`
+  application, it will look for the `MY_APP_PORT` environment variable.
   """
 
   @behaviour Config.Provider
 
-  @doc """
-  init is called by Distillery when running the provider during boostrap.
-
-  `prefix` is a string that will me capitalized and prepended to all
-  environment variables we look at. e.g. `prefix: "beowulf"` translates
-  into environment variables starting with `BEOWULF_`. This is used
-  to namespace our variables to prevent conflicts.
-
-  `env_map` follows the following format:
-  ```
-    env_map = %{
-      heorot: %{
-        location: %{type: :string, default: "land of the Geats"},
-      },
-      mycluster: %{
-        server_count: %{type: :integer, default: "123"},
-        name: %{type: :string, default: "grendel"},
-        settings: %{type: {:list, :string}, default: "swarthy,hairy"},
-        keys: %{type: {:tuple, :float}, default: "1.1,2.3,3.4"}
-        no_default: %{type: :string}
-      }
-    }
-  ```
-
-  Type conversion uses the defined types to handle the destination
-  conversion.
-
-  Supported types:
-   * `:string`
-   * `:integer`
-   * `:float`
-   * `{:tuple, <type>}` - Complex type, where the second field is
-     one of the simple types above. Currently items in the tuple
-     must all be of the same type. A 3rd argument can be passed
-     to specify the field separator in the env var. Defaults to
-     comma.
-   * `{:list, <type>}` - Complex type, following the same rules as
-     Tuples above.
-
-  Default values will overwrite any existing values in the config
-  for this environment.
-
-  #### Calling
-  `init/1` expects to be passed a Keyword List of the form:
-    `init(prefix: "prefix", env_map: map, enforce: false)`
-
-  The `enforce` argument specifies whether values with no default
-  are all required. This will prevent any fallbacks to settings
-  in the config files for values that are configured in the EnvVar
-  Provider.
-  """
   @impl true
   def init(opts) do
     env_map =
