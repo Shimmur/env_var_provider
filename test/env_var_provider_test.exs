@@ -86,7 +86,6 @@ defmodule EnvVar.ProviderTest do
   end
 
   describe "when the value is a Keyword list" do
-    @tag :focus
     test "it correctly defaults values for numbers, strings, lists, tuples", state do
       config = init_and_load([], prefix: "beowulf", env_map: state[:complex], enforce: false)
 
@@ -97,7 +96,6 @@ defmodule EnvVar.ProviderTest do
       assert Keyword.get(conf, :list_key) == [1, 2, 3]
     end
 
-    @tag :focus
     test "it pulls in the right env var values", state do
       System.put_env("BEOWULF_MYCLUSTER_CLUSTER_OPTIONS_CREDENTIALS", "myuser,mypass")
       System.put_env("BEOWULF_MYCLUSTER_CLUSTER_OPTIONS_PORT", "11121")
@@ -111,7 +109,6 @@ defmodule EnvVar.ProviderTest do
       assert Keyword.get(conf, :list_key) == [6, 7, 8]
     end
 
-    @tag :focus
     test "it reads deeply merged config", state do
       System.put_env("BEOWULF_MYCLUSTER_SYS_LOGGER_METADATA_ENVIRONMENT", "dev")
       System.put_env("BEOWULF_MYCLUSTER_SYS_LOGGER_METADATA_DEEPER_PORT", "9090")
@@ -126,7 +123,6 @@ defmodule EnvVar.ProviderTest do
       System.delete_env("BEOWULF_MYCLUSTER_SYS_LOGGER_METADATA_DEEPER_PORT")
     end
 
-    @tag :focus
     test "it performs deep merging", state do
       System.put_env("BEOWULF_MYCLUSTER_SYS_LOGGER_METADATA_ENVIRONMENT", "prod")
       System.put_env("BEOWULF_MYCLUSTER_SYS_LOGGER_METADATA_DEEPER_PORT", "9090")
