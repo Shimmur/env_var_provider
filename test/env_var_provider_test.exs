@@ -85,37 +85,44 @@ defmodule EnvVar.ProviderTest do
     {:ok, state}
   end
 
-  describe "when the value is a Keyword list" do
-    test "it correctly defaults values for numbers, strings, lists, tuples", state do
-      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:complex], enforce: false)
+  defp init_and_load(existing_config, options) do
+    options = EnvVar.Provider.init(options)
+    EnvVar.Provider.load(existing_config, options)
+  end
 
-      conf = Application.get_env(:mycluster, :cluster_options, :port)
+  describe "when the value is a Keyword list" do
+    @tag :focus
+    test "it correctly defaults values for numbers, strings, lists, tuples", state do
+      config = init_and_load([], prefix: "beowulf", env_map: state[:complex], enforce: false)
+
+      conf = config[:mycluster][:cluster_options]
       assert Keyword.get(conf, :port) == 9042
       assert Keyword.get(conf, :credentials) == {"user", "pass"}
       assert Keyword.get(conf, :contact_points) == "127.0.0.1"
       assert Keyword.get(conf, :list_key) == [1, 2, 3]
     end
 
+    @tag :focus
     test "it pulls in the right env var values", state do
       System.put_env("BEOWULF_MYCLUSTER_CLUSTER_OPTIONS_CREDENTIALS", "myuser,mypass")
       System.put_env("BEOWULF_MYCLUSTER_CLUSTER_OPTIONS_PORT", "11121")
       System.put_env("BEOWULF_MYCLUSTER_CLUSTER_OPTIONS_LIST_KEY", "6,7,8")
 
-      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:complex], enforce: false)
-      conf = Application.get_env(:mycluster, :cluster_options, :port)
+      config = init_and_load([], prefix: "beowulf", env_map: state[:complex], enforce: false)
+      conf = config[:mycluster][:cluster_options]
 
       assert Keyword.get(conf, :port) == 11121
       assert Keyword.get(conf, :credentials) == {"myuser", "mypass"}
       assert Keyword.get(conf, :list_key) == [6, 7, 8]
     end
 
+    @tag :focus
     test "it reads deeply merged config", state do
       System.put_env("BEOWULF_MYCLUSTER_SYS_LOGGER_METADATA_ENVIRONMENT", "dev")
       System.put_env("BEOWULF_MYCLUSTER_SYS_LOGGER_METADATA_DEEPER_PORT", "9090")
 
-      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:deep_merged], enforce: false)
-
-      config = Application.get_env(:mycluster, :sys_logger)
+      config = init_and_load([], prefix: "beowulf", env_map: state[:deep_merged], enforce: false)
+      config = config[:mycluster][:sys_logger]
 
       assert config[:metadata][:environment] == "dev"
       assert config[:metadata][:deeper][:port] == 9090
@@ -124,21 +131,25 @@ defmodule EnvVar.ProviderTest do
       System.delete_env("BEOWULF_MYCLUSTER_SYS_LOGGER_METADATA_DEEPER_PORT")
     end
 
+    @tag :focus
     test "it performs deep merging", state do
       System.put_env("BEOWULF_MYCLUSTER_SYS_LOGGER_METADATA_ENVIRONMENT", "prod")
       System.put_env("BEOWULF_MYCLUSTER_SYS_LOGGER_METADATA_DEEPER_PORT", "9090")
 
-      starting_config = [metadata: [environment: "dev", name: "foo", deeper: [address: "localhost"]]]
-      Application.put_env(:mycluster, :sys_logger, starting_config)
+      starting_config = [
+        mycluster: [
+          sys_logger: [metadata: [environment: "dev", name: "foo", deeper: [address: "localhost"]]]
+        ]
+      ]
 
-      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:deep_merged], enforce: false)
+      config = init_and_load(starting_config, prefix: "beowulf", env_map: state[:deep_merged], enforce: false)
 
-      config = Application.get_env(:mycluster, :sys_logger)
+      sys_logger_config = config[:mycluster][:sys_logger]
 
-      assert config[:metadata][:environment] == "prod"
-      assert config[:metadata][:name] == "foo"
-      assert config[:metadata][:deeper][:address] == "localhost"
-      assert config[:metadata][:deeper][:port] == 9090
+      assert sys_logger_config[:metadata][:environment] == "prod"
+      assert sys_logger_config[:metadata][:name] == "foo"
+      assert sys_logger_config[:metadata][:deeper][:address] == "localhost"
+      assert sys_logger_config[:metadata][:deeper][:port] == 9090
     after
       System.delete_env("BEOWULF_MYCLUSTER_SYS_LOGGER_METADATA_ENVIRONMENT")
       System.delete_env("BEOWULF_MYCLUSTER_SYS_LOGGER_METADATA_DEEPER_PORT")

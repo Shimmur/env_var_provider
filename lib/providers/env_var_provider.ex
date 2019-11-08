@@ -5,7 +5,8 @@ defmodule EnvVar.Provider do
   system environment variables. These variable names are constructed
   from the field names directly, following a convention.
   """
-  use Distillery.Releases.Config.Provider
+
+  @behaviour Config.Provider
 
   @doc """
   init is called by Distillery when running the provider during boostrap.
@@ -58,6 +59,7 @@ defmodule EnvVar.Provider do
   in the config files for values that are configured in the EnvVar
   Provider.
   """
+  @impl true
   def init(opts) do
     env_map =
       case Keyword.fetch!(opts, :env_map) do
@@ -78,9 +80,16 @@ defmodule EnvVar.Provider do
         other -> raise ArgumentError, ":enforce should be a boolean, got: #{inspect(other)}"
       end
 
-    process_config(env_map, prefix, enforce?)
+    _state = %{env_map: env_map, prefix: prefix, enforce?: enforce?}
   end
 
+  @impl true
+  def load(config, %{env_map: env_map, prefix: prefix, enforce?: enforce?}) do
+    config_from_env = read_config_from_env(env_map, prefix, enforce?)
+    Config.Reader.merge(config, config_from_env)
+  end
+
+  @doc false
   def show_vars(opts) do
     prefix = opts |> Keyword.fetch!(:prefix) |> String.to_atom()
     env_map = Keyword.fetch!(opts, :env_map)
@@ -102,27 +111,25 @@ defmodule EnvVar.Provider do
     end
   end
 
-  defp process_config(env_map, prefix, enforce) do
+  defp read_config_from_env(env_map, prefix, enforce) do
     for {app, app_config} <- env_map do
-      for {key, key_config} <- app_config do
-        process_and_merge_config(prefix, enforce, app, key, key_config)
-      end
+      parsed_app_config =
+        for {key, key_config} <- app_config do
+          parsed_config = process_and_merge_config(prefix, enforce, app, key, key_config)
+          {key, parsed_config}
+        end
+
+      {app, parsed_app_config}
     end
   end
 
   defp process_and_merge_config(prefix, enforce, app, key, key_config) do
     case key_config do
       %{type: _} ->
-        new_config = parse_config(prefix, enforce, [app, key], key_config)
-
-        if not is_nil(new_config) do
-          Application.put_env(app, key, new_config)
-        end
+        parse_config(prefix, enforce, [app, key], key_config)
 
       _other ->
-        current = Application.get_env(app, key, [])
-        new_config = parse_config(prefix, enforce, [app, key], key_config)
-        Application.put_env(app, key, deep_merge(current, new_config))
+        parse_config(prefix, enforce, [app, key], key_config)
     end
   end
 
@@ -137,32 +144,6 @@ defmodule EnvVar.Provider do
   defp parse_config(prefix, enforce, path, nested_schema) do
     for {key, schema} <- nested_schema do
       {key, parse_config(prefix, enforce, path ++ [key], schema)}
-    end
-  end
-
-  defp deep_merge(config1, config2) do
-    cond do
-      Keyword.keyword?(config1) and Keyword.keyword?(config2) ->
-        Keyword.merge(config1, config2, &deep_merge/3)
-
-      is_nil(config2) ->
-        config1
-
-      true ->
-        config2
-    end
-  end
-
-  defp deep_merge(_key, value1, value2) do
-    cond do
-      Keyword.keyword?(value1) and Keyword.keyword?(value2) ->
-        Keyword.merge(value1, value2, &deep_merge/3)
-
-      is_nil(value2) ->
-        value1
-
-      true ->
-        value2
     end
   end
 
