@@ -85,11 +85,6 @@ defmodule EnvVar.ProviderTest do
     {:ok, state}
   end
 
-  defp init_and_load(existing_config, options) do
-    options = EnvVar.Provider.init(options)
-    EnvVar.Provider.load(existing_config, options)
-  end
-
   describe "when the value is a Keyword list" do
     @tag :focus
     test "it correctly defaults values for numbers, strings, lists, tuples", state do
@@ -203,14 +198,14 @@ defmodule EnvVar.ProviderTest do
     test "integers", state do
       System.put_env("BEOWULF_MYCLUSTER_SERVER_COUNT", "44")
 
-      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:simple], enforce: false)
+      config = init_and_load([], prefix: "beowulf", env_map: state[:simple], enforce: false)
 
-      assert Application.get_env(:mycluster, :server_count) == 44
+      assert config[:mycluster][:server_count] == 44
 
       System.put_env("BEOWULF_MYCLUSTER_SERVER_COUNT", "not an integer")
 
       assert_raise ArgumentError, ~r/expected integer/, fn ->
-        EnvVar.Provider.init(prefix: "beowulf", env_map: state[:simple], enforce: false)
+        init_and_load([], prefix: "beowulf", env_map: state[:simple], enforce: false)
       end
     after
       System.delete_env("BEOWULF_MYCLUSTER_SERVER_COUNT")
@@ -218,15 +213,14 @@ defmodule EnvVar.ProviderTest do
 
     test "floats", state do
       System.put_env("BEOWULF_MYCLUSTER_KEYS", "3.14,6.28")
+      config = init_and_load([], prefix: "beowulf", env_map: state[:simple], enforce: false)
 
-      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:simple], enforce: false)
-
-      assert Application.get_env(:mycluster, :keys) == {3.14, 6.28}
+      assert config[:mycluster][:keys] == {3.14, 6.28}
 
       System.put_env("BEOWULF_MYCLUSTER_KEYS", "3.14,notafloat")
 
       assert_raise ArgumentError, ~r/expected float/, fn ->
-        EnvVar.Provider.init(prefix: "beowulf", env_map: state[:simple], enforce: false)
+        init_and_load([], prefix: "beowulf", env_map: state[:simple], enforce: false)
       end
     after
       System.delete_env("BEOWULF_MYCLUSTER_KEYS")
@@ -236,18 +230,18 @@ defmodule EnvVar.ProviderTest do
   describe "when dealing with simple values" do
     test "it handles empty prefix", state do
       System.put_env("MYCLUSTER_SERVER_COUNT", "67")
-      EnvVar.Provider.init(prefix: "", env_map: state[:simple], enforce: false)
+      config = init_and_load([], prefix: "", env_map: state[:simple], enforce: false)
 
-      assert Application.get_env(:mycluster, :server_count) == 67
+      assert config[:mycluster][:server_count] == 67
     end
 
     test "it correctly defaults values for numbers, strings, lists, tuples", state do
-      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:simple], enforce: false)
+      config = init_and_load([], prefix: "beowulf", env_map: state[:simple], enforce: false)
 
-      assert Application.get_env(:mycluster, :server_count) == 123
-      assert Application.get_env(:mycluster, :name) == "grendel"
-      assert Application.get_env(:mycluster, :settings) == ["swarthy", "hairy"]
-      assert Application.get_env(:mycluster, :keys) == {1.1, 2.3, 3.4}
+      assert config[:mycluster][:server_count] == 123
+      assert config[:mycluster][:name] == "grendel"
+      assert config[:mycluster][:settings] == ["swarthy", "hairy"]
+      assert config[:mycluster][:keys] == {1.1, 2.3, 3.4}
     end
 
     test "it pulls in the right env var values", state do
@@ -256,17 +250,17 @@ defmodule EnvVar.ProviderTest do
       System.put_env("BEOWULF_MYCLUSTER_SETTINGS", "good,tall")
       System.put_env("BEOWULF_MYCLUSTER_KEYS", "3.2,5.6,7.8")
 
-      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:simple], enforce: false)
+      config = init_and_load([], prefix: "beowulf", env_map: state[:simple], enforce: false)
 
-      assert Application.get_env(:mycluster, :name) == "hrothgar"
-      assert Application.get_env(:mycluster, :settings) == ["good", "tall"]
-      assert Application.get_env(:mycluster, :keys) == {3.2, 5.6, 7.8}
+      assert config[:mycluster][:name] == "hrothgar"
+      assert config[:mycluster][:settings] == ["good", "tall"]
+      assert config[:mycluster][:keys] == {3.2, 5.6, 7.8}
     end
 
     test "creates new values with defaults that didn't already exist", state do
-      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:simple], enforce: false)
+      config = init_and_load([], prefix: "beowulf", env_map: state[:simple], enforce: false)
 
-      assert "envoygw" == Application.get_env(:the_system, :service_name)
+      assert "envoygw" == config[:the_system][:service_name]
     end
   end
 
@@ -274,9 +268,9 @@ defmodule EnvVar.ProviderTest do
     test "it handles Elixir modules as keys cleanly", state do
       System.put_env("BEOWULF_APP_ENVVAR_PROVIDER", "different")
 
-      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:elixir_mod], enforce: false)
+      config = init_and_load([], prefix: "beowulf", env_map: state[:elixir_mod], enforce: false)
 
-      assert Application.get_env(:app, EnvVar.Provider) == "different"
+      assert config[:app][EnvVar.Provider] == "different"
     end
   end
 
@@ -307,7 +301,7 @@ defmodule EnvVar.ProviderTest do
       }
 
       assert_raise(RuntimeError, fn ->
-        EnvVar.Provider.init(prefix: "beowulf", env_map: env_map, enforce: true)
+        init_and_load([], prefix: "beowulf", env_map: env_map, enforce: true)
       end)
     end
 
@@ -321,7 +315,7 @@ defmodule EnvVar.ProviderTest do
       }
 
       assert_raise(RuntimeError, fn ->
-        EnvVar.Provider.init(prefix: "beowulf", env_map: env_map, enforce: true)
+        init_and_load([], prefix: "beowulf", env_map: env_map, enforce: true)
       end)
     end
 
@@ -333,7 +327,12 @@ defmodule EnvVar.ProviderTest do
       }
 
       # Should not raise
-      EnvVar.Provider.init(prefix: "beowulf", env_map: env_map, enforce: true)
+      init_and_load([], prefix: "beowulf", env_map: env_map, enforce: true)
     end
+  end
+
+  defp init_and_load(existing_config, options) do
+    options = EnvVar.Provider.init(options)
+    EnvVar.Provider.load(existing_config, options)
   end
 end
