@@ -5,7 +5,7 @@ os: linux
 dist: xenial
 
 elixir:
-  - 1.8.1
+  - 1.9.4
 
 otp_release:
   - 21.2
