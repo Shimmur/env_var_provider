@@ -5,7 +5,7 @@ defmodule EnvVar.Provider do
   system environment variables. These variable names are constructed
   from the field names directly, following a convention.
   """
-  use Mix.Releases.Config.Provider
+  use Distillery.Releases.Config.Provider
 
   @doc """
   init is called by Distillery when running the provider during boostrap.
