@@ -8,10 +8,11 @@ defmodule EnvVar.Provider do
 
   ## Usage
 
-  Define a `EnvVar.Config` module that exports a `config/0` function:
+  Define a function that returns a map representing the configuration. For
+  example, you can have a module just for that:
 
-      defmodule EnvVar.Config do
-        def config do
+      defmodule MyApp.EnvVarConfig do
+        def schema do
           %{
             my_app: %{
               port: %{type: :integer}
@@ -27,7 +28,12 @@ defmodule EnvVar.Provider do
           # ...,
           releases: [
             my_release: [
-              config_providers: [{EnvVar.Provider, prefix: "", enforce: true, env_map: EnvVar.Config.config()}]
+              config_providers: [
+                {EnvVar.Provider,
+                 env_map: MyApp.EnvVarConfig.schema(),
+                 prefix: "",
+                 enforce: true}
+              ]
             ]
           ]
         ]
