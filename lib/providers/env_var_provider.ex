@@ -47,8 +47,7 @@ defmodule EnvVar.Provider do
       For example, if you pass `prefix: "BEOWULF_"` and you want to configure `:port` inside
       `:my_app`, the environment variable name will be `BEOWULF_MY_APP_PORT`. Required.
 
-    * `:env_map` - (map) the configuration schema. You'll mostly call `EnvVar.Config.config/0`
-      to get this.
+    * `:env_map` - (map) the configuration schema.
 
   ## Configuration schema
 

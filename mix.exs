@@ -1,9 +1,3 @@
-defmodule Digits.EnvVar.Config do
-  def config do
-    %{}
-  end
-end
-
 defmodule EnvVarProvider.MixProject do
   use Mix.Project
 
@@ -15,12 +9,7 @@ defmodule EnvVarProvider.MixProject do
       start_permanent: Mix.env() == :prod,
       description: description(),
       package: package(),
-      deps: deps(),
-      releases: [
-        demo: [
-          config_providers: [{EnvVar.Provider, env_map: Digits.EnvVar.Config.config()}]
-        ]
-      ]
+      deps: deps()
     ]
   end
 
