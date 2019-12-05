@@ -327,6 +327,25 @@ defmodule EnvVar.ProviderTest do
     end
   end
 
+  describe "using {mod, fun, args} as the env_map" do
+    test "mod.fun(args...) is called to get the env map" do
+      System.put_env("BEOWULF_THE_SYSTEM_PORT", "5049")
+
+      config =
+        init_and_load([], prefix: "beowulf", enforce: true, env_map: {__MODULE__, :__test_env_map__, [:the_system]})
+
+      assert config[:the_system][:port] == 5049
+    end
+  end
+
+  def __test_env_map__(main_name) do
+    %{
+      main_name => %{
+        port: %{type: :integer}
+      }
+    }
+  end
+
   defp init_and_load(existing_config, options) do
     options = EnvVar.Provider.init(options)
     EnvVar.Provider.load(existing_config, options)

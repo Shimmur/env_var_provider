@@ -47,7 +47,9 @@ defmodule EnvVar.Provider do
       For example, if you pass `prefix: "BEOWULF_"` and you want to configure `:port` inside
       `:my_app`, the environment variable name will be `BEOWULF_MY_APP_PORT`. Required.
 
-    * `:env_map` - (map) the configuration schema.
+    * `:env_map` - (map or `{module, function, args}`) the configuration schema. Can be a
+      map of configuration or a `{module, function, args}` tuple that returns a map of
+      configuration when invoked (as `module.function(args...)`).
 
   ## Configuration schema
 
@@ -95,7 +97,8 @@ defmodule EnvVar.Provider do
     env_map =
       case Keyword.fetch!(opts, :env_map) do
         map when is_map(map) -> map
-        other -> raise ArgumentError, ":env_map should be a map, got: #{inspect(other)}"
+        {mod, fun, args} -> apply(mod, fun, args)
+        other -> raise ArgumentError, ":env_map should be a map or {mod, fun, args}, got: #{inspect(other)}"
       end
 
     prefix =
