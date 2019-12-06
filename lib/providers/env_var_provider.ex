@@ -126,7 +126,12 @@ defmodule EnvVar.Provider do
   @doc false
   def show_vars(opts) do
     prefix = opts |> Keyword.fetch!(:prefix) |> String.to_atom()
-    env_map = Keyword.fetch!(opts, :env_map)
+
+    env_map =
+      case Keyword.fetch!(opts, :env_map) do
+        map when is_map(map) -> map
+        {mod, fun, args} -> apply(mod, fun, args)
+      end
 
     for {app, app_config} <- env_map do
       for {key, key_config} <- app_config do
