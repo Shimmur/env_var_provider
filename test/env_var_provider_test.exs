@@ -87,9 +87,9 @@ defmodule EnvVar.ProviderTest do
 
   describe "when the value is a Keyword list" do
     test "it correctly defaults values for numbers, strings, lists, tuples", state do
-      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:complex], enforce: false)
+      config = init_and_load([], prefix: "beowulf", env_map: state[:complex], enforce: false)
 
-      conf = Application.get_env(:mycluster, :cluster_options, :port)
+      conf = config[:mycluster][:cluster_options]
       assert Keyword.get(conf, :port) == 9042
       assert Keyword.get(conf, :credentials) == {"user", "pass"}
       assert Keyword.get(conf, :contact_points) == "127.0.0.1"
@@ -101,8 +101,8 @@ defmodule EnvVar.ProviderTest do
       System.put_env("BEOWULF_MYCLUSTER_CLUSTER_OPTIONS_PORT", "11121")
       System.put_env("BEOWULF_MYCLUSTER_CLUSTER_OPTIONS_LIST_KEY", "6,7,8")
 
-      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:complex], enforce: false)
-      conf = Application.get_env(:mycluster, :cluster_options, :port)
+      config = init_and_load([], prefix: "beowulf", env_map: state[:complex], enforce: false)
+      conf = config[:mycluster][:cluster_options]
 
       assert Keyword.get(conf, :port) == 11121
       assert Keyword.get(conf, :credentials) == {"myuser", "mypass"}
@@ -113,9 +113,8 @@ defmodule EnvVar.ProviderTest do
       System.put_env("BEOWULF_MYCLUSTER_SYS_LOGGER_METADATA_ENVIRONMENT", "dev")
       System.put_env("BEOWULF_MYCLUSTER_SYS_LOGGER_METADATA_DEEPER_PORT", "9090")
 
-      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:deep_merged], enforce: false)
-
-      config = Application.get_env(:mycluster, :sys_logger)
+      config = init_and_load([], prefix: "beowulf", env_map: state[:deep_merged], enforce: false)
+      config = config[:mycluster][:sys_logger]
 
       assert config[:metadata][:environment] == "dev"
       assert config[:metadata][:deeper][:port] == 9090
@@ -128,17 +127,20 @@ defmodule EnvVar.ProviderTest do
       System.put_env("BEOWULF_MYCLUSTER_SYS_LOGGER_METADATA_ENVIRONMENT", "prod")
       System.put_env("BEOWULF_MYCLUSTER_SYS_LOGGER_METADATA_DEEPER_PORT", "9090")
 
-      starting_config = [metadata: [environment: "dev", name: "foo", deeper: [address: "localhost"]]]
-      Application.put_env(:mycluster, :sys_logger, starting_config)
+      starting_config = [
+        mycluster: [
+          sys_logger: [metadata: [environment: "dev", name: "foo", deeper: [address: "localhost"]]]
+        ]
+      ]
 
-      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:deep_merged], enforce: false)
+      config = init_and_load(starting_config, prefix: "beowulf", env_map: state[:deep_merged], enforce: false)
 
-      config = Application.get_env(:mycluster, :sys_logger)
+      sys_logger_config = config[:mycluster][:sys_logger]
 
-      assert config[:metadata][:environment] == "prod"
-      assert config[:metadata][:name] == "foo"
-      assert config[:metadata][:deeper][:address] == "localhost"
-      assert config[:metadata][:deeper][:port] == 9090
+      assert sys_logger_config[:metadata][:environment] == "prod"
+      assert sys_logger_config[:metadata][:name] == "foo"
+      assert sys_logger_config[:metadata][:deeper][:address] == "localhost"
+      assert sys_logger_config[:metadata][:deeper][:port] == 9090
     after
       System.delete_env("BEOWULF_MYCLUSTER_SYS_LOGGER_METADATA_ENVIRONMENT")
       System.delete_env("BEOWULF_MYCLUSTER_SYS_LOGGER_METADATA_DEEPER_PORT")
@@ -192,14 +194,14 @@ defmodule EnvVar.ProviderTest do
     test "integers", state do
       System.put_env("BEOWULF_MYCLUSTER_SERVER_COUNT", "44")
 
-      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:simple], enforce: false)
+      config = init_and_load([], prefix: "beowulf", env_map: state[:simple], enforce: false)
 
-      assert Application.get_env(:mycluster, :server_count) == 44
+      assert config[:mycluster][:server_count] == 44
 
       System.put_env("BEOWULF_MYCLUSTER_SERVER_COUNT", "not an integer")
 
       assert_raise ArgumentError, ~r/expected integer/, fn ->
-        EnvVar.Provider.init(prefix: "beowulf", env_map: state[:simple], enforce: false)
+        init_and_load([], prefix: "beowulf", env_map: state[:simple], enforce: false)
       end
     after
       System.delete_env("BEOWULF_MYCLUSTER_SERVER_COUNT")
@@ -207,15 +209,14 @@ defmodule EnvVar.ProviderTest do
 
     test "floats", state do
       System.put_env("BEOWULF_MYCLUSTER_KEYS", "3.14,6.28")
+      config = init_and_load([], prefix: "beowulf", env_map: state[:simple], enforce: false)
 
-      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:simple], enforce: false)
-
-      assert Application.get_env(:mycluster, :keys) == {3.14, 6.28}
+      assert config[:mycluster][:keys] == {3.14, 6.28}
 
       System.put_env("BEOWULF_MYCLUSTER_KEYS", "3.14,notafloat")
 
       assert_raise ArgumentError, ~r/expected float/, fn ->
-        EnvVar.Provider.init(prefix: "beowulf", env_map: state[:simple], enforce: false)
+        init_and_load([], prefix: "beowulf", env_map: state[:simple], enforce: false)
       end
     after
       System.delete_env("BEOWULF_MYCLUSTER_KEYS")
@@ -225,18 +226,18 @@ defmodule EnvVar.ProviderTest do
   describe "when dealing with simple values" do
     test "it handles empty prefix", state do
       System.put_env("MYCLUSTER_SERVER_COUNT", "67")
-      EnvVar.Provider.init(prefix: "", env_map: state[:simple], enforce: false)
+      config = init_and_load([], prefix: "", env_map: state[:simple], enforce: false)
 
-      assert Application.get_env(:mycluster, :server_count) == 67
+      assert config[:mycluster][:server_count] == 67
     end
 
     test "it correctly defaults values for numbers, strings, lists, tuples", state do
-      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:simple], enforce: false)
+      config = init_and_load([], prefix: "beowulf", env_map: state[:simple], enforce: false)
 
-      assert Application.get_env(:mycluster, :server_count) == 123
-      assert Application.get_env(:mycluster, :name) == "grendel"
-      assert Application.get_env(:mycluster, :settings) == ["swarthy", "hairy"]
-      assert Application.get_env(:mycluster, :keys) == {1.1, 2.3, 3.4}
+      assert config[:mycluster][:server_count] == 123
+      assert config[:mycluster][:name] == "grendel"
+      assert config[:mycluster][:settings] == ["swarthy", "hairy"]
+      assert config[:mycluster][:keys] == {1.1, 2.3, 3.4}
     end
 
     test "it pulls in the right env var values", state do
@@ -245,17 +246,17 @@ defmodule EnvVar.ProviderTest do
       System.put_env("BEOWULF_MYCLUSTER_SETTINGS", "good,tall")
       System.put_env("BEOWULF_MYCLUSTER_KEYS", "3.2,5.6,7.8")
 
-      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:simple], enforce: false)
+      config = init_and_load([], prefix: "beowulf", env_map: state[:simple], enforce: false)
 
-      assert Application.get_env(:mycluster, :name) == "hrothgar"
-      assert Application.get_env(:mycluster, :settings) == ["good", "tall"]
-      assert Application.get_env(:mycluster, :keys) == {3.2, 5.6, 7.8}
+      assert config[:mycluster][:name] == "hrothgar"
+      assert config[:mycluster][:settings] == ["good", "tall"]
+      assert config[:mycluster][:keys] == {3.2, 5.6, 7.8}
     end
 
     test "creates new values with defaults that didn't already exist", state do
-      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:simple], enforce: false)
+      config = init_and_load([], prefix: "beowulf", env_map: state[:simple], enforce: false)
 
-      assert "envoygw" == Application.get_env(:the_system, :service_name)
+      assert "envoygw" == config[:the_system][:service_name]
     end
   end
 
@@ -263,9 +264,9 @@ defmodule EnvVar.ProviderTest do
     test "it handles Elixir modules as keys cleanly", state do
       System.put_env("BEOWULF_APP_ENVVAR_PROVIDER", "different")
 
-      EnvVar.Provider.init(prefix: "beowulf", env_map: state[:elixir_mod], enforce: false)
+      config = init_and_load([], prefix: "beowulf", env_map: state[:elixir_mod], enforce: false)
 
-      assert Application.get_env(:app, EnvVar.Provider) == "different"
+      assert config[:app][EnvVar.Provider] == "different"
     end
   end
 
@@ -296,7 +297,7 @@ defmodule EnvVar.ProviderTest do
       }
 
       assert_raise(RuntimeError, fn ->
-        EnvVar.Provider.init(prefix: "beowulf", env_map: env_map, enforce: true)
+        init_and_load([], prefix: "beowulf", env_map: env_map, enforce: true)
       end)
     end
 
@@ -310,7 +311,7 @@ defmodule EnvVar.ProviderTest do
       }
 
       assert_raise(RuntimeError, fn ->
-        EnvVar.Provider.init(prefix: "beowulf", env_map: env_map, enforce: true)
+        init_and_load([], prefix: "beowulf", env_map: env_map, enforce: true)
       end)
     end
 
@@ -322,7 +323,31 @@ defmodule EnvVar.ProviderTest do
       }
 
       # Should not raise
-      EnvVar.Provider.init(prefix: "beowulf", env_map: env_map, enforce: true)
+      init_and_load([], prefix: "beowulf", env_map: env_map, enforce: true)
     end
+  end
+
+  describe "using {mod, fun, args} as the env_map" do
+    test "mod.fun(args...) is called to get the env map" do
+      System.put_env("BEOWULF_THE_SYSTEM_PORT", "5049")
+
+      config =
+        init_and_load([], prefix: "beowulf", enforce: true, env_map: {__MODULE__, :__test_env_map__, [:the_system]})
+
+      assert config[:the_system][:port] == 5049
+    end
+  end
+
+  def __test_env_map__(main_name) do
+    %{
+      main_name => %{
+        port: %{type: :integer}
+      }
+    }
+  end
+
+  defp init_and_load(existing_config, options) do
+    options = EnvVar.Provider.init(options)
+    EnvVar.Provider.load(existing_config, options)
   end
 end

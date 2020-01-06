@@ -1,68 +1,104 @@
 defmodule EnvVar.Provider do
   @moduledoc """
-  This provider loads a configuration from a map and uses that to set
-  Application environment configuration with the values found in
-  system environment variables. These variable names are constructed
-  from the field names directly, following a convention.
-  """
-  use Distillery.Releases.Config.Provider
+  A `Config.Provider` that reads a *configuration schema* from a map and
+  reads configuration from environment variables.
 
-  @doc """
-  init is called by Distillery when running the provider during boostrap.
+  Variable names are constructed from the field names directly,
+  following a convention.
 
-  `prefix` is a string that will me capitalized and prepended to all
-  environment variables we look at. e.g. `prefix: "beowulf"` translates
-  into environment variables starting with `BEOWULF_`. This is used
-  to namespace our variables to prevent conflicts.
+  ## Usage
 
-  `env_map` follows the following format:
-  ```
-    env_map = %{
-      heorot: %{
-        location: %{type: :string, default: "land of the Geats"},
-      },
-      mycluster: %{
-        server_count: %{type: :integer, default: "123"},
-        name: %{type: :string, default: "grendel"},
-        settings: %{type: {:list, :string}, default: "swarthy,hairy"},
-        keys: %{type: {:tuple, :float}, default: "1.1,2.3,3.4"}
-        no_default: %{type: :string}
+  Define a function that returns a map representing the configuration. For
+  example, you can have a module just for that:
+
+      defmodule MyApp.EnvVarConfig do
+        def schema do
+          %{
+            my_app: %{
+              port: %{type: :integer}
+            }
+          }
+        end
+      end
+
+  Now you can add `EnvVar.Provider` as a config provider in your release configuration:
+
+      def project do
+        [
+          # ...,
+          releases: [
+            my_release: [
+              config_providers: [
+                {EnvVar.Provider,
+                 env_map: MyApp.EnvVarConfig.schema(),
+                 prefix: "",
+                 enforce: true}
+              ]
+            ]
+          ]
+        ]
+
+  ## Options
+
+    * `:enforce` - (boolean) if `true`, raise an error if any environment variables are not
+      present when reading the configuration. Required.
+
+    * `:prefix` - (string or atom) prepended to the name of system environment variables.
+      For example, if you pass `prefix: "BEOWULF_"` and you want to configure `:port` inside
+      `:my_app`, the environment variable name will be `BEOWULF_MY_APP_PORT`. Required.
+
+    * `:env_map` - (map or `{module, function, args}`) the configuration schema. Can be a
+      map of configuration or a `{module, function, args}` tuple that returns a map of
+      configuration when invoked (as `module.function(args...)`).
+
+  ## Configuration schema
+
+  The configuration schema is a map with applications as the top-level keys and maps
+  of configuration as their values. The schema for each configuration option is a map
+  with at least the `:type` key.
+
+      %{
+        my_app: %{
+          port: %{type: :integer}
+        }
       }
-    }
-  ```
 
-  Type conversion uses the defined types to handle the destination
-  conversion.
+  The supported schema properties are:
 
-  Supported types:
-   * `:string`
-   * `:integer`
-   * `:float`
-   * `{:tuple, <type>}` - Complex type, where the second field is
-     one of the simple types above. Currently items in the tuple
-     must all be of the same type. A 3rd argument can be passed
-     to specify the field separator in the env var. Defaults to
-     comma.
-   * `{:list, <type>}` - Complex type, following the same rules as
-     Tuples above.
+    * `:type` - see below
 
-  Default values will overwrite any existing values in the config
-  for this environment.
+    * `:default` - the default value if no environment variable is found.
+      This value will be parsed just like the environment variable would,
+      so it should always be a string.
 
-  #### Calling
-  `init/1` expects to be passed a Keyword List of the form:
-    `init(prefix: "prefix", env_map: map, enforce: false)`
+  The supported types are:
 
-  The `enforce` argument specifies whether values with no default
-  are all required. This will prevent any fallbacks to settings
-  in the config files for values that are configured in the EnvVar
-  Provider.
+    * simple types - `:string`, `:integer`, or `:float`
+
+    * `{:tuple, TYPE, SEPARATOR}` - complex type where the second field
+    is one of the simple types above. `SEPARATOR` is used as the separator.
+
+    * `{:tuple, TYPE}` - same as `{:tuple, TYPE, ","}`.
+
+    * `{:list, TYPE, SEPARATOR}` and `{:list, TYPE}` - complex type that
+      behaves like `{:tuple, ...}` but parsing to a list.
+
+  ## Variable name convention
+
+  `EnvVar.Provider` will look for system environment variables by upcasing configuration names
+  and separating with underscores. For example, if you configure the `:port` key of the `:my_app`
+  application, it will look for the `MY_APP_PORT` environment variable.
   """
+
+  @behaviour Config.Provider
+
+  @impl true
   def init(opts) do
     env_map =
       case Keyword.fetch!(opts, :env_map) do
         map when is_map(map) -> map
-        other -> raise ArgumentError, ":env_map should be a map, got: #{inspect(other)}"
+        {mod, fun, args} -> apply(mod, fun, args)
+        other -> raise ArgumentError, ":env_map should be a map or {mod, fun, args}, got: #{inspect(other)}"
       end
 
     prefix =
@@ -78,12 +114,24 @@ defmodule EnvVar.Provider do
         other -> raise ArgumentError, ":enforce should be a boolean, got: #{inspect(other)}"
       end
 
-    process_config(env_map, prefix, enforce?)
+    _state = %{env_map: env_map, prefix: prefix, enforce?: enforce?}
   end
 
+  @impl true
+  def load(config, %{env_map: env_map, prefix: prefix, enforce?: enforce?}) do
+    config_from_env = read_config_from_env(env_map, prefix, enforce?)
+    Config.Reader.merge(config, config_from_env)
+  end
+
+  @doc false
   def show_vars(opts) do
     prefix = opts |> Keyword.fetch!(:prefix) |> String.to_atom()
-    env_map = Keyword.fetch!(opts, :env_map)
+
+    env_map =
+      case Keyword.fetch!(opts, :env_map) do
+        map when is_map(map) -> map
+        {mod, fun, args} -> apply(mod, fun, args)
+      end
 
     for {app, app_config} <- env_map do
       for {key, key_config} <- app_config do
@@ -102,27 +150,25 @@ defmodule EnvVar.Provider do
     end
   end
 
-  defp process_config(env_map, prefix, enforce) do
+  defp read_config_from_env(env_map, prefix, enforce) do
     for {app, app_config} <- env_map do
-      for {key, key_config} <- app_config do
-        process_and_merge_config(prefix, enforce, app, key, key_config)
-      end
+      parsed_app_config =
+        for {key, key_config} <- app_config do
+          parsed_config = process_and_merge_config(prefix, enforce, app, key, key_config)
+          {key, parsed_config}
+        end
+
+      {app, parsed_app_config}
     end
   end
 
   defp process_and_merge_config(prefix, enforce, app, key, key_config) do
     case key_config do
       %{type: _} ->
-        new_config = parse_config(prefix, enforce, [app, key], key_config)
-
-        if not is_nil(new_config) do
-          Application.put_env(app, key, new_config)
-        end
+        parse_config(prefix, enforce, [app, key], key_config)
 
       _other ->
-        current = Application.get_env(app, key, [])
-        new_config = parse_config(prefix, enforce, [app, key], key_config)
-        Application.put_env(app, key, deep_merge(current, new_config))
+        parse_config(prefix, enforce, [app, key], key_config)
     end
   end
 
@@ -137,32 +183,6 @@ defmodule EnvVar.Provider do
   defp parse_config(prefix, enforce, path, nested_schema) do
     for {key, schema} <- nested_schema do
       {key, parse_config(prefix, enforce, path ++ [key], schema)}
-    end
-  end
-
-  defp deep_merge(config1, config2) do
-    cond do
-      Keyword.keyword?(config1) and Keyword.keyword?(config2) ->
-        Keyword.merge(config1, config2, &deep_merge/3)
-
-      is_nil(config2) ->
-        config1
-
-      true ->
-        config2
-    end
-  end
-
-  defp deep_merge(_key, value1, value2) do
-    cond do
-      Keyword.keyword?(value1) and Keyword.keyword?(value2) ->
-        Keyword.merge(value1, value2, &deep_merge/3)
-
-      is_nil(value2) ->
-        value1
-
-      true ->
-        value2
     end
   end
 
