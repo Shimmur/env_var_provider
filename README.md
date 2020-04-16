@@ -106,6 +106,7 @@ Supported types:
  * `:string`
  * `:integer`
  * `:float`
+ * `:boolean` - 0, 1, 'true', 'false' supported
  * `{:tuple, <type>}` - Complex type, where the second field is
    one of the simple types above. Currently items in the tuple
    must all be of the same type. A 3rd argument can be passed

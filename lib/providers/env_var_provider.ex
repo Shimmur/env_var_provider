@@ -203,6 +203,16 @@ defmodule EnvVar.Provider do
     env_value
   end
 
+  def convert(env_value, :boolean) do
+    case env_value do
+      "1" -> true
+      "0" -> false
+      "true" -> true
+      "false" -> false
+      _other -> raise ArgumentError, "expected boolean ('0', '1', 'true', 'false'), got: #{inspect(env_value)}"
+    end
+  end
+
   def convert(env_value, {:tuple, type}) do
     convert(env_value, {:tuple, type, ","})
   end
