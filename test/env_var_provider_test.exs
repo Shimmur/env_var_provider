@@ -17,7 +17,6 @@ defmodule EnvVar.ProviderTest do
       max_connections_host: 5,
       tcp_nodelay: true,
       tcp_keepalive: {true, 1800},
-      # LOCAL_QUORUM
       default_consistency_level: 6
     )
 
@@ -34,7 +33,8 @@ defmodule EnvVar.ProviderTest do
 
     simple_config = %{
       the_system: %{
-        service_name: %{type: :string, default: "envoygw"}
+        service_name: %{type: :string, default: "envoygw"},
+        feature_flag_enabled: %{type: :boolean, default: "false"}
       },
       mycluster: %{
         server_count: %{type: :integer, default: "123"},
@@ -72,6 +72,7 @@ defmodule EnvVar.ProviderTest do
       System.delete_env("BEOWULF_MYCLUSTER_SETTINGS")
       System.delete_env("BEOWULF_MYCLUSTER_KEYS")
       System.delete_env("BEOWULF_APP_ENVVAR_PROVIDER")
+      System.delete_env("BEOWULF_THE_SYSTEM_FEATURE_FLAG_ENABLED")
       :ok
     end)
 
@@ -220,6 +221,19 @@ defmodule EnvVar.ProviderTest do
       end
     after
       System.delete_env("BEOWULF_MYCLUSTER_KEYS")
+    end
+
+    test "booleans", state do
+      for {text, expected} <- [{"false", false}, {"true", true}, {"0", false}, {"1", true}] do
+        System.put_env("BEOWULF_THE_SYSTEM_FEATURE_FLAG_ENABLED", text)
+        config = init_and_load([], prefix: "beowulf", env_map: state[:simple], enforce: false)
+        assert config[:the_system][:feature_flag_enabled] == expected
+      end
+
+      System.put_env("BEOWULF_THE_SYSTEM_FEATURE_FLAG_ENABLED", "not a boolean")
+      assert_raise ArgumentError, ~r/expected boolean/, fn ->
+        init_and_load([], prefix: "beowulf", env_map: state[:simple], enforce: false)
+      end
     end
   end
 
