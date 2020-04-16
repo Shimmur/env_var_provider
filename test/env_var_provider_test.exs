@@ -231,6 +231,7 @@ defmodule EnvVar.ProviderTest do
       end
 
       System.put_env("BEOWULF_THE_SYSTEM_FEATURE_FLAG_ENABLED", "not a boolean")
+
       assert_raise ArgumentError, ~r/expected boolean/, fn ->
         init_and_load([], prefix: "beowulf", env_map: state[:simple], enforce: false)
       end
