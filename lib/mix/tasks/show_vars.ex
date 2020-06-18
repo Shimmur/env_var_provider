@@ -10,6 +10,8 @@ defmodule Mix.Tasks.ShowVars do
   use Mix.Task
 
   def run([prefix]) do
+    Mix.Task.run("compile")
+
     Mix.Project.config()
     |> Keyword.fetch!(:releases)
     |> fetch_only_release!()
