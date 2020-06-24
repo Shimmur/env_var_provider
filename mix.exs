@@ -36,6 +36,7 @@ defmodule EnvVarProvider.MixProject do
     [
       files: ["lib", "mix.exs", "README*", "LICENSE*"],
       maintainers: ["Karl Matthias"],
+      organization: "community",
       licenses: ["MIT"],
       links: %{"GitHub" => "https://github.com/Shimmur/env_var_provider"}
     ]
