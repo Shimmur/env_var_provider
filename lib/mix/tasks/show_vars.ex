@@ -2,7 +2,7 @@ defmodule Mix.Tasks.ShowVars do
   @shortdoc "Show the names of the environment variables to use"
 
   @moduledoc """
-  This taks will look at the config you have defined
+  This task will look at the config you have defined
   and return the list of environment variables you will need
   to supply to the release at runtime.
   """
