@@ -3,12 +3,10 @@
 EnvVarProvider
 ==============
 
-Allows _dynamic_ runtime configuration of Elixir releases from system
-environment variables, including _type_ _conversion_ to non-string types. Great
-for running Elixir applications on modern infrastructure like Docker,
-Kubernetes, Mesos.
-
-This requires Distillery 2.0.
+Config provider that allows _dynamic_ runtime configuration of Elixir releases
+from system environment variables, including _type conversion_ to non-string
+types. Great for running Elixir applications on modern infrastructure like
+Docker, Kubernetes, Mesos.
 
 Installation
 ------------
@@ -18,7 +16,7 @@ Add `env_var_provider` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:env_var_provider, "~> 0.2.1", organization: "community"}
+    {:env_var_provider, "~> 0.5.2", organization: "community"}
   ]
 end
 ```
@@ -26,18 +24,13 @@ end
 Configuration
 -------------
 
-You need to add this to your `rel/config.exs` like so:
+You can use the `EnvVar.Provider` config provider as it implements the
+`Config.Provider` behaviour. In your releases configuration (usually in
+`mix.exs`), use it like this:
 
 ```elixir
-release :my_release do
-  set version: current_version(:my_app)
-  set applications: [
-    :runtime_tools
-  ]
-
-  # Environment variables to process as overrides using the
-  # EnvVar.Provider
-  env_config = %{
+defp releases do
+  env_map = %{
     erlcass: %{
       cluster_options: %{
         credentials: %{type: {:tuple, :string}, default: "user,pass"},
@@ -50,16 +43,19 @@ release :my_release do
     }
   }
 
-  set(
-    # Use the EnvVar provider to handle config overrides
-    config_providers: [
-      {EnvVar.Provider, [prefix: "my_release", env_map: env_config, enforce: false]}
+  [
+    my_app: [
+      # ...,
+      config_providers: [
+        {EnvVar.Provider, enforce: true, prefix: "", env_map: env_map}
+      ]
     ]
-  )
+  ]
 end
 ```
 
 The above config would source env vars like this:
+
  * `MY_RELEASE_ERLCASS_CLUSTER_OPTIONS_CREDENTIALS`
  * `MY_RELEASE_ERLCASS_CLUSTER_OPTIONS_CONTACT_POINTS`
  * `MY_RELEASE_ERLCASS_CLUSTER_OPTIONS_PORT`
@@ -72,13 +68,14 @@ can be one layer flatter like in `:simpler` above.
 **You may need to call the provider multiple times for different applications
 and you can just specify it repeatedly.**
 
-`prefix` is a string that will me capitalized and prepended to all
+`prefix` is a string that will be capitalized and prepended to all
 environment variables we look at. e.g. `prefix: "beowulf"` translates
 into environment variables starting with `BEOWULF_`. This is used
 to namespace our variables to prevent conflicts.
 
 `env_map` follows the following format:
-```
+
+```elixir
   env_map = %{
     heorot: %{
       location: %{type: :string, default: "land of the Geats"},
