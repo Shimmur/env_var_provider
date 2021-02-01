@@ -63,6 +63,15 @@ defmodule EnvVar.ProviderTest do
       }
     }
 
+    # This is for the case where type is part of the env name
+    overlapping_property_and_name_config = %{
+      mycluster: %{
+        logger: %{
+          type: %{type: :string}
+        }
+      }
+    }
+
     on_exit(fn ->
       System.delete_env("BEOWULF_MYCLUSTER_CLUSTER_OPTIONS_CREDENTIALS")
       System.delete_env("BEOWULF_MYCLUSTER_CLUSTER_OPTIONS_PORT")
@@ -71,6 +80,7 @@ defmodule EnvVar.ProviderTest do
       System.delete_env("BEOWULF_MYCLUSTER_NAME")
       System.delete_env("BEOWULF_MYCLUSTER_SETTINGS")
       System.delete_env("BEOWULF_MYCLUSTER_KEYS")
+      System.delete_env("BEOWULF_MYCLUSTER_LOGGER_TYPE")
       System.delete_env("BEOWULF_APP_ENVVAR_PROVIDER")
       System.delete_env("BEOWULF_THE_SYSTEM_FEATURE_FLAG_ENABLED")
       :ok
@@ -80,7 +90,8 @@ defmodule EnvVar.ProviderTest do
       complex: complex_config,
       simple: simple_config,
       elixir_mod: elixir_module_config,
-      deep_merged: deep_merged_config
+      deep_merged: deep_merged_config,
+      overlapping_property_and_name_config: overlapping_property_and_name_config
     ]
 
     {:ok, state}
@@ -350,6 +361,25 @@ defmodule EnvVar.ProviderTest do
         init_and_load([], prefix: "beowulf", enforce: true, env_map: {__MODULE__, :__test_env_map__, [:the_system]})
 
       assert config[:the_system][:port] == 5049
+    end
+  end
+
+  describe "when dealing with overlapping property name and env name" do
+    test "correctly pulls the right envs", state do
+      expected_type = "test_logger_type"
+      System.put_env("BEOWULF_MYCLUSTER_LOGGER_TYPE", expected_type)
+
+      config =
+        init_and_load(
+          [],
+          prefix: "beowulf",
+          env_map: state[:overlapping_property_and_name_config],
+          enforce: false
+        )
+
+      type = config[:mycluster][:logger][:type]
+
+      assert type == expected_type
     end
   end
 
