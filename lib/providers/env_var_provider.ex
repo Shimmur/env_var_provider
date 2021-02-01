@@ -179,7 +179,8 @@ defmodule EnvVar.Provider do
     end
   end
 
-  defp parse_config(prefix, enforce, path, %{type: _} = schema) do
+  defp parse_config(prefix, enforce, path, %{type: type_value} = schema)
+       when not is_map(type_value) do
     env_var_name = lookup_key_for([prefix | path])
 
     env_var_name
