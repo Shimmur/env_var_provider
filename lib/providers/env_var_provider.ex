@@ -170,16 +170,11 @@ defmodule EnvVar.Provider do
   end
 
   defp process_and_merge_config(prefix, enforce, app, key, key_config) do
-    case key_config do
-      %{type: _} ->
-        parse_config(prefix, enforce, [app, key], key_config)
-
-      _other ->
-        parse_config(prefix, enforce, [app, key], key_config)
-    end
+    parse_config(prefix, enforce, [app, key], key_config)
   end
 
-  defp parse_config(prefix, enforce, path, %{type: _} = schema) do
+  defp parse_config(prefix, enforce, path, %{type: type_value} = schema)
+       when not is_map(type_value) do
     env_var_name = lookup_key_for([prefix | path])
 
     env_var_name

@@ -16,7 +16,7 @@ Add `env_var_provider` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:env_var_provider, "~> 0.5.2", organization: "community"}
+    {:env_var_provider, "~> 0.5.3", organization: "community"}
   ]
 end
 ```
