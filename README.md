@@ -1,7 +1,8 @@
-[![Build Status](https://travis-ci.com/Shimmur/env_var_provider.svg?branch=master)](https://travis-ci.com/Shimmur/env_var_provider)
-
 EnvVarProvider
 ==============
+
+[![CI](https://github.com/Shimmur/env_var_provider/actions/workflows/main.yml/badge.svg)](https://github.com/Shimmur/env_var_provider/actions/workflows/main.yml)
+[![Coverage Status](https://coveralls.io/repos/github/Shimmur/env_var_provider/badge.svg)](https://coveralls.io/github/Shimmur/env_var_provider)
 
 Config provider that allows _dynamic_ runtime configuration of Elixir releases
 from system environment variables, including _type conversion_ to non-string
