@@ -9,7 +9,10 @@ defmodule EnvVarProvider.MixProject do
       start_permanent: Mix.env() == :prod,
       description: description(),
       package: package(),
-      deps: deps()
+      deps: deps(),
+
+      # Tests
+      test_coverage: [tool: ExCoveralls]
     ]
   end
 
@@ -21,7 +24,8 @@ defmodule EnvVarProvider.MixProject do
 
   defp deps do
     [
-      {:ex_doc, ">= 0.0.0", only: :dev}
+      {:ex_doc, ">= 0.0.0", only: :dev},
+      {:excoveralls, "~> 0.14", only: :test}
     ]
   end
 
